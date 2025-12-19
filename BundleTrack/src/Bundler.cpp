@@ -50,6 +50,8 @@ using namespace Eigen;
 Bundler::Bundler(std::shared_ptr<YAML::Node> yml1, DataLoaderBase *data_loader)
 {
   _data_loader = data_loader;
+  _K = data_loader->_K;
+
   yml = yml1;
   _max_iter = (*yml1)["bundle"]["num_iter_outter"].as<int>();
 
@@ -131,8 +133,6 @@ void Bundler::processNewFrame(std::shared_ptr<Frame> frame)
       return;
     }
 
-    PointCloudRGBNormal::Ptr cloud = _data_loader->_real_model;
-    PointCloudRGBNormal::Ptr tmp(new PointCloudRGBNormal);
     Eigen::Matrix4f model_in_cam = frame->_pose_in_model.inverse();
 
     Eigen::Matrix4f offset = _fm->procrustesByCorrespondence(frame, last_frame, _fm->_matches[{frame,last_frame}]);
@@ -457,8 +457,6 @@ void Bundler::saveNewframeResult1()
   if ((*yml)["LOG"].as<int>()>0)
   {
     cv::Mat color_viz = _newframe->_vis.clone();
-    PointCloudRGBNormal::Ptr cur_model(new PointCloudRGBNormal);
-    pcl::transformPointCloudWithNormals(*(_data_loader->_real_model),*cur_model,ob_in_cam);
     for (int h=0;h<_newframe->_H;h++)
     {
       for (int w=0;w<_newframe->_W;w++)
@@ -473,8 +471,7 @@ void Bundler::saveNewframeResult1()
         }
       }
     }
-    Utils::drawProjectPoints(cur_model,_data_loader->_K,color_viz);
-    drawPose6DOnImage(color_viz, ob_in_cam, _data_loader->_K, 0.05f, 2, cv::Point(5, 60));
+    drawPose6DOnImage(color_viz, ob_in_cam, _K, 0.05f, 2, cv::Point(5, 60));
     cv::putText(color_viz,_newframe->_id_str,{5,30},cv::FONT_HERSHEY_PLAIN,2,{255,0,0},1,8,false);
 
 
@@ -516,8 +513,6 @@ void Bundler::saveNewframeResult()
   {
     cv::Mat color_viz = _newframe->_vis.clone();
 
-    PointCloudRGBNormal::Ptr cur_model(new PointCloudRGBNormal);
-    pcl::transformPointCloudWithNormals(*(_data_loader->_real_model), *cur_model, ob_in_cam);
 
     for (int h = 0; h < _newframe->_H; h++)
       for (int w = 0; w < _newframe->_W; w++)
@@ -527,9 +522,8 @@ void Bundler::saveNewframeResult()
           for (int i = 0; i < 3; i++) bgr[i] = (uchar)(bgr[i] * 0.2);
       }
 
-    Utils::drawProjectPoints(cur_model, _data_loader->_K, color_viz);
 
-    drawPose6DOnImage(color_viz, ob_in_cam, _data_loader->_K, 0.05f, 2, cv::Point(5, 60));
+    drawPose6DOnImage(color_viz, ob_in_cam, _K, 0.05f, 2, cv::Point(5, 60));
     cv::putText(color_viz, _newframe->_id_str, {5,30},
                 cv::FONT_HERSHEY_PLAIN, 2, {255,0,0}, 1, cv::LINE_AA);
 

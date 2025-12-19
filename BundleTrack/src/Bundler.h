@@ -64,6 +64,8 @@ public:
 
   std::shared_ptr<Lfnet> _fm;
 
+  Eigen::Matrix3f _K;
+
   float _max_dist, _max_normal_angle;
   int _max_iter;
   bool _need_reinit;
