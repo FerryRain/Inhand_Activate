@@ -32,7 +32,7 @@ def run_one_video(data_dir,cfg1,port):
 
 
 
-    cfg['LOG'] = 0
+    cfg['LOG'] = 1
     cfg['port'] = port
     tmp_config_dir = '/tmp/config_{}.yml'.format(name)
     with open(tmp_config_dir,'w') as ff:
@@ -50,8 +50,10 @@ def run_one_video(data_dir,cfg1,port):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
+    # parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_object2')
+    # parser.add_argument('--port', type=int, default=5555)
 
-    parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/Real_time_vis')
+    parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/mustard0')
     parser.add_argument('--port', type=int, default=5555)
 
 

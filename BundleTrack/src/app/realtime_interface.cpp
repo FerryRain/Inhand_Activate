@@ -381,7 +381,8 @@ int main(int argc, char** argv)
         try
         {
             bundler.processNewFrame(frame);
-            bundler.saveNewframeResult();
+            if ((*yml)["LOG"].as<int>() > 0)
+                bundler.saveNewframeResult();
         }
         catch (const std::exception& e)
         {
