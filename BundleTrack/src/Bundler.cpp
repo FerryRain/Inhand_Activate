@@ -58,6 +58,16 @@ Bundler::Bundler(std::shared_ptr<YAML::Node> yml1, DataLoaderBase *data_loader)
   _fm = std::make_shared<Lfnet>(yml, this);
 }
 
+Bundler::Bundler(std::shared_ptr<YAML::Node> yml1, Eigen::Matrix3f c_K)
+{
+  _K = c_K;
+
+  yml = yml1;
+  _max_iter = (*yml1)["bundle"]["num_iter_outter"].as<int>();
+
+  _fm = std::make_shared<Lfnet>(yml, this);
+}
+
 
 void Bundler::processNewFrame(std::shared_ptr<Frame> frame)
 {

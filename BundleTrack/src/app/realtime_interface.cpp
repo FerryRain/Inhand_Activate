@@ -293,9 +293,7 @@ int main(int argc, char** argv)
     Eigen::Matrix3f cam_K;
     Utils::parseMatrixTxt(data_dir+"/cam_K.txt", cam_K);
 
-
-    DataLoaderYcbineoat data_loader(yml);
-    Bundler bundler(yml, &data_loader);
+    Bundler bundler(yml, cam_K);
 
     // debug controls (can override in yml)
     bool rpc_debug = false;
