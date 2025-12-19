@@ -97,7 +97,7 @@ void OptimizerGpu::optimizeFrames(const std::vector<EntryJ> &global_corres, cons
   }
   cudaMemcpy(d_transforms, transforms_cpu.data(), sizeof(float4x4)*n_frames, cudaMemcpyHostToDevice);
 
-  std::cout<<"global_corres="<<global_corres.size()<<std::endl;
+  // std::cout<<"global_corres="<<global_corres.size()<<std::endl;
 
   const uint max_n_residuals = n_frames*(n_frames-1)/2*H_down*W_down/4 + global_corres.size();
 

@@ -59,7 +59,7 @@ Bundler::Bundler(std::shared_ptr<YAML::Node> yml1, DataLoaderBase *data_loader)
 
 void Bundler::processNewFrame(std::shared_ptr<Frame> frame)
 {
-  std::cout<<"\n\n";
+  // std::cout<<"\n\n";
   printf("New frame %s\n",frame->_id_str.c_str());
   _newframe = frame;
 
@@ -227,7 +227,7 @@ void Bundler::selectKeyFramesForBA()
 {
   std::set<std::shared_ptr<Frame>> frames = {_newframe};
   const int max_BA_frames = (*yml)["bundle"]["max_BA_frames"].as<int>();
-  printf("total keyframes=%d, already chosen _local_frames=%d, want to select %d\n", _keyframes.size(), frames.size(), max_BA_frames);
+  // printf("total keyframes=%d, already chosen _local_frames=%d, want to select %d\n", _keyframes.size(), frames.size(), max_BA_frames);
   if (_keyframes.size()+frames.size()<=max_BA_frames)
   {
     for (const auto &kf:_keyframes)
@@ -288,12 +288,12 @@ void Bundler::optimizeGPU()
 
 
   std::sort(_local_frames.begin(), _local_frames.end(), FramePtrComparator());
-  printf("#_local_frames=%d\n",_local_frames.size());
-  for (int i=0;i<_local_frames.size();i++)
-  {
-    std::cout<<_local_frames[i]->_id_str<<" ";
-  }
-  std::cout<<std::endl;
+  // printf("#_local_frames=%d\n",_local_frames.size());
+  // for (int i=0;i<_local_frames.size();i++)
+  // {
+  //   std::cout<<_local_frames[i]->_id_str<<" ";
+  // }
+  // std::cout<<std::endl;
 
   std::vector<EntryJ> global_corres;
   std::vector<int> n_match_per_pair;
@@ -350,7 +350,7 @@ void Bundler::optimizeGPU()
     return;
   }
 
-  printf("OptimizerGPU begin, global_corres#=%d\n",global_corres.size());
+  // printf("OptimizerGPU begin, global_corres#=%d\n",global_corres.size());
   OptimizerGpu opt(yml);
   opt.optimizeFrames(global_corres, n_match_per_pair, _local_frames.size(), _newframe->_H, _newframe->_W, depths_gpu, colors_gpu, normals_gpu, poses, _newframe->_K);
 

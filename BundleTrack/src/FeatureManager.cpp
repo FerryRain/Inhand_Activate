@@ -176,7 +176,7 @@ void SiftManager::findCorres(std::shared_ptr<Frame> frameA, std::shared_ptr<Fram
   if (_matches.find({frameA,frameB})!=_matches.end()) return;
 
   bool is_neighbor = std::abs(frameA->_id-frameB->_id)==1;
-  printf("finding corres between %s(id=%d) and %s(id=%d)\n", frameA->_id_str.c_str(), frameA->_id, frameB->_id_str.c_str(), frameB->_id);
+  // printf("finding corres between %s(id=%d) and %s(id=%d)\n", frameA->_id_str.c_str(), frameA->_id, frameB->_id_str.c_str(), frameB->_id);
 
   if (is_neighbor)
   {
@@ -658,7 +658,7 @@ void SiftManager::runRansacBetween(std::shared_ptr<Frame> frameA, std::shared_pt
 
 void SiftManager::runRansacMultiPairGPU(const std::vector<std::pair<std::shared_ptr<Frame>, std::shared_ptr<Frame>>> &pairs)
 {
-  printf("start multi pair ransac GPU, pairs#=%d\n", pairs.size());
+  // printf("start multi pair ransac GPU, pairs#=%d\n", pairs.size());
 
   const int num_sample = (*yml)["ransac"]["num_sample"].as<int>();
   const int max_iter = (*yml)["ransac"]["max_iter"].as<int>();
@@ -873,10 +873,10 @@ void Lfnet::detectFeature(std::shared_ptr<Frame> frame, const float rot_deg)
     _socket.send(msg, 0);
   }
 
-  printf("zmq start waiting for reply\n");
+  // printf("zmq start waiting for reply\n");
   std::vector<zmq::message_t> recv_msgs;
   zmq::recv_multipart(_socket, std::back_inserter(recv_msgs));
-  printf("zmq got reply\n");
+  // printf("zmq got reply\n");
 
   std::vector<int> info(2);
   std::memcpy(info.data(), recv_msgs[0].data(), info.size()*sizeof(int));

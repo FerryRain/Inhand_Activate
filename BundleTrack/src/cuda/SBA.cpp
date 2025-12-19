@@ -132,7 +132,7 @@ bool SBA::alignCUDA(const CUDACache* cudaCache, bool useDensePairwise, const std
 	auto begin = std::chrono::steady_clock::now();
 	m_solver->solve(d_correspondences, m_numCorrespondences, d_validImages, numImages, cudaCache, weightsSparse, weightsDenseDepth, weightsDenseColor, useDensePairwise, d_xRot, d_xTrans, isStart, isEnd, revalidateIdx);
 	auto end = std::chrono::steady_clock::now();
-	std::cout << "m_solver->solve Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0 << "[ms]" << std::endl;
+	// std::cout << "m_solver->solve Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()/1000.0 << "[ms]" << std::endl;
 	bool removed = false;
 
 	return removed;

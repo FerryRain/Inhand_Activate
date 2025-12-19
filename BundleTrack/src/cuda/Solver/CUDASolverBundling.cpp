@@ -34,8 +34,8 @@ CUDASolverBundling::CUDASolverBundling(unsigned int maxNumberOfImages, unsigned 
 	const unsigned int numberOfVariables = maxNumberOfImages;
 	m_maxCorrPerImage = max_corr_per_image;
 
-	printf("maxNumResiduals / maxNumberOfImages = %d / %d = %d\n", maxNumResiduals, maxNumberOfImages, int(maxNumResiduals/maxNumberOfImages));
-	printf("m_maxNumberOfImages*m_maxCorrPerImage = %d x %d = %d\n", m_maxNumberOfImages, m_maxCorrPerImage, m_maxNumberOfImages*m_maxCorrPerImage);
+	// printf("maxNumResiduals / maxNumberOfImages = %d / %d = %d\n", maxNumResiduals, maxNumberOfImages, int(maxNumResiduals/maxNumberOfImages));
+	// printf("m_maxNumberOfImages*m_maxCorrPerImage = %d x %d = %d\n", m_maxNumberOfImages, m_maxCorrPerImage, m_maxNumberOfImages*m_maxCorrPerImage);
 
 #ifdef _DEBUG
 	cutilSafeCall(cudaDeviceSynchronize());
