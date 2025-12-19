@@ -335,8 +335,9 @@ int main(int argc, char** argv)
         assert(gt_files.size()>0);
         Utils::parsePoseTxt(_gt_dir + gt_files[0], _ob_in_cam0);
     };
-    Eigen::Matrix4f last_pose_in_model = _ob_in_cam0.inverse();
-    bool last_pose_valid = true;
+    Eigen::Matrix4f init_pose_in_model = _ob_in_cam0.inverse();
+    Eigen::Matrix4f last_pose_in_model;
+    bool last_pose_valid = false;
 
 
     PointCloudRGBNormal::Ptr _real_model;
@@ -501,6 +502,7 @@ int main(int argc, char** argv)
         } else {
             // warm start from last frame (tracking mode)
             if (last_pose_valid) pose_in_model = last_pose_in_model;
+            else pose_in_model = init_pose_in_model;
         }
 
         std::string id_str = std::to_string(frame_id);

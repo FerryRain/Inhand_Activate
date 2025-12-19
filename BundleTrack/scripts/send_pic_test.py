@@ -151,12 +151,14 @@ if __name__ == "__main__":
     addr = "tcp://127.0.0.1:5550"
 
     root = "/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/mustard0"
+    # root = "/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_object2"
     rgb_dir   = os.path.join(root, "rgb")
     depth_dir = os.path.join(root, "depth")
     mask_dir  = os.path.join(root, "masks")
 
     init_ob_in_cam = np.loadtxt(
-        os.path.join(root, "annotated_poses/0000000.txt")
+        # os.path.join(root, "annotated_poses/00000_1765959164880.txt")
+    os.path.join(root, "annotated_poses/0000000.txt")
     ).astype(np.float32).reshape(4, 4)
 
     sock = make_client(addr=addr, timeout_ms=10000)
