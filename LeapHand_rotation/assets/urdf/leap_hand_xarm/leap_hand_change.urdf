@@ -1,0 +1,923 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- =================================================================================== -->
+<!-- | This URDF file combines the xArm6 robot with a Leap Hand as the end-effector.   | -->
+<!-- | The Leap Hand definition now includes the FSR sensors.                         | -->
+<!-- =================================================================================== -->
+<robot name="xarm6_leap_hand_with_fsr">
+
+  <!-- ============================================================================= -->
+  <!-- |                         XARM6 ROBOT DEFINITION                            | -->
+  <!-- ============================================================================= -->
+
+  <link name="world"/>
+  <joint name="world_joint" type="fixed">
+    <parent link="world"/>
+    <child link="link_base"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+  </joint>
+
+  <material name="black">
+    <color rgba="0.4 0.4 0.4 1.0"/>
+  </material>
+  <material name="Red">
+    <color rgba="0.8 0.0 0.0 1.0"/>
+  </material>
+  <material name="White">
+    <color rgba="1.0 1.0 1.0 1.0"/>
+  </material>
+  <material name="Silver">
+    <color rgba="0.753 0.753 0.753 1.0"/>
+  </material>
+  <material name="Grey">
+    <color rgba="0.46 0.46 0.46 1.0"/>
+  </material>
+
+  <link name="link_base">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/base.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="White"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/base.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.09103"/>
+      <mass value="2.7"/>
+      <inertia ixx="0.00494875" ixy="-3.5E-06" ixz="1.25E-05" iyy="0.00494174" iyz="1.67E-06" izz="0.002219"/>
+    </inertial>
+  </link>
+
+  <link name="link1">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link1.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="White"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link1.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.002 0.02692 -0.01332"/>
+      <mass value="2.16"/>
+      <inertia ixx="0.00539427" ixy="1.095E-05" ixz="1.635E-06" iyy="0.0048979" iyz="0.000793" izz="0.00311573"/>
+    </inertial>
+  </link>
+  <joint name="joint1" type="revolute">
+    <parent link="link_base"/>
+    <child link="link1"/>
+    <origin rpy="0 0 0" xyz="0 0 0.267"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50.0" lower="0.00000" upper="0.00001" velocity="3.14"/>
+    <dynamics damping="1.0" friction="1.0"/>
+  </joint>
+
+  <link name="link2">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link2.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="White"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link2.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.03531 -0.21398 0.03386"/>
+      <mass value="1.71"/>
+      <inertia ixx="0.0248674" ixy="-0.00430651" ixz="-0.00067797" iyy="0.00485548" iyz="0.00457245" izz="0.02387827"/>
+    </inertial>
+  </link>
+  <joint name="joint2" type="revolute">
+    <parent link="link1"/>
+    <child link="link2"/>
+    <origin rpy="-1.5708 0 0" xyz="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="50.0" lower="1.1830000" upper="1.1830001" velocity="3.14"/>
+    <dynamics damping="1.0" friction="1.0"/>
+  </joint>
+
+  <link name="link3">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link3.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="White"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link3.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.06781 0.10749 0.01457"/>
+      <mass value="1.384"/>
+      <inertia ixx="0.0053694" ixy="0.0014185" ixz="-0.00092094" iyy="0.0032423" iyz="-0.00169178" izz="0.00501731"/>
+    </inertial>
+  </link>
+  <joint name="joint3" type="revolute">
+    <parent link="link2"/>
+    <child link="link3"/>
+    <origin rpy="0 0 0" xyz="0.0535 -0.2845 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="32.0" lower="-1.54101" upper="-1.541" velocity="3.14"/>
+    <dynamics damping="1.0" friction="1.0"/>
+  </joint>
+
+  <link name="link4">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link4.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="White"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link4.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.00021 0.02578 -0.02538"/>
+      <mass value="1.115"/>
+      <inertia ixx="0.00439263" ixy="5.028E-05" ixz="1.374E-05" iyy="0.0040077" iyz="0.00045338" izz="0.00110321"/>
+    </inertial>
+  </link>
+  <joint name="joint4" type="revolute">
+    <parent link="link3"/>
+    <child link="link4"/>
+    <origin rpy="-1.5708 0 0" xyz="0.0775 0.3425 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="32.0" lower="3.1416000" upper="3.1416100" velocity="3.14"/>
+    <dynamics damping="1.0" friction="1.0"/>
+  </joint>
+
+  <link name="link5">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link5.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="White"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link5.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.05428 0.01781 0.00543"/>
+      <mass value="1.275"/>
+      <inertia ixx="0.001202758" ixy="0.000492428" ixz="-0.00039147" iyy="0.0022876" iyz="-1.235E-04" izz="0.0026866"/>
+    </inertial>
+  </link>
+  <joint name="joint5" type="revolute">
+    <parent link="link4"/>
+    <child link="link5"/>
+    <origin rpy="1.5708 0 0" xyz="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="32.0" lower="2.7420000" upper="2.7421000" velocity="3.14"/>
+    <dynamics damping="1.0" friction="1.0"/>
+  </joint>
+
+  <link name="link6">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/link6.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <material name="Silver"/>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="meshes/link6.stl"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </collision>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0.00064 -0.00952"/>
+      <mass value="0.1096"/>
+      <inertia ixx="4.5293E-05" ixy="0" ixz="0" iyy="4.8111E-05" iyz="0" izz="7.9715E-05"/>
+    </inertial>
+  </link>
+  <joint name="joint6" type="revolute">
+    <parent link="link5"/>
+    <child link="link6"/>
+    <origin rpy="-1.5708 0 0" xyz="0.076 0.097 0"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="20.0" lower="-1.56901" upper="-1.56900" velocity="3.14"/>
+    <dynamics damping="1.0" friction="1.0"/>
+  </joint>
+
+  <!-- ============================================================================= -->
+  <!-- |           CONNECTING XARM6 TO LEAP HAND (CRITICAL PART)                   | -->
+  <!-- ============================================================================= -->
+  <joint name="leap_hand_mount_joint" type="fixed">
+    <!-- PARENT: The last link of the xArm -->
+    <parent link="link6"/>
+    <!-- CHILD: The base link of the Leap Hand -->
+    <child link="onshape_palm_lower"/>
+    <!-- 
+      IMPORTANT: The origin (xyz and rpy) defines the mounting pose of the hand. 
+      You MUST adjust these values to match your physical setup or simulation.
+      The values below are a default starting point (no rotation, no offset).
+    -->
+    <origin xyz="0.03 0.06 0.012" rpy="0 -3.1415 -1.57"/>
+  </joint>
+
+  <!-- ============================================================================= -->
+  <!-- |                       LEAP HAND ROBOT DEFINITION                          | -->
+  <!-- Note: Mesh paths like "meshes/..." must be correct relative to this file.   | -->
+  <!-- ============================================================================= -->
+  
+  <link name="onshape_palm_lower">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.237"/>
+      <inertia ixx="0.0003541" ixy="-0.0000012" ixz="-0.0000024" iyy="0.0002609" iyz="-0.0000029" izz="0.0005293"/>
+    </inertial>
+    <visual>
+      <origin rpy="0. 0. 0." xyz="-0.0200952 0.0257578 -0.0347224"/>
+      <geometry>
+        <mesh filename="meshes/onshape_palm_lower_visuals_palm_lower_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0. 0. 0." xyz="-0.0200952 0.0257578 -0.0347224"/>
+      <geometry>
+        <mesh filename="meshes/onshape_palm_lower_collisions_palm_lower_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  
+  <!-- === FINGER 1 === -->
+  <link name="onshape_mcp_joint">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.044"/>
+      <inertia ixx="0.0000115" ixy="0.000003" ixz="0.0000001" iyy="0.0000078" iyz="0.0000001" izz="0.0000148"/>
+    </inertial>
+    <visual>
+      <origin rpy="-3.1415925 -0. -3.1415925" xyz="-0.0084069 0.0077662 -0.0146574"/>
+      <geometry>
+        <mesh filename="meshes/onshape_mcp_joint_visuals_mcp_joint_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-3.1415925 -0. -3.1415925" xyz="-0.0084069 0.0077662 -0.0146574"/>
+      <geometry>
+        <mesh filename="meshes/onshape_mcp_joint_collisions_mcp_joint_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_1" type="revolute">
+    <origin rpy="-1.5707964 -1.5707964 0. " xyz="-0.0070952 0.0230578 -0.0187224"/>
+    <parent link="onshape_palm_lower"/>
+    <child link="onshape_mcp_joint"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.314" upper="2.2299999" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_pip">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.032"/>
+      <inertia ixx="0.0000048" ixy="0." ixz="0." iyy="0.0000029" iyz="0." izz="0.0000042"/>
+    </inertial>
+    <visual>
+      <origin rpy="-0.7853982 1.5707963 0.7853981" xyz="-0.0096434 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_pip_visuals_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-0.7853982 1.5707963 0.7853981" xyz="-0.0096434 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_pip_collisions_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_0" type="revolute">
+    <origin rpy="1.5707963 -0. -1.5707963" xyz="0.0122 0.0381 -0.0145"/>
+    <parent link="onshape_mcp_joint"/>
+    <child link="onshape_pip"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-1.047" upper="1.047" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_dip">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.037"/>
+      <inertia ixx="0.0000055" ixy="-0.0000006" ixz="-0." iyy="0.0000057" iyz="-0." izz="0.0000067"/>
+    </inertial>
+    <visual>
+      <origin rpy="0. 0.0000001 3.1415925" xyz="-0.0211334 -0.0084321 -0.0097851"/>
+      <geometry>
+        <mesh filename="meshes/onshape_dip_visuals_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0. 0.0000001 3.1415925" xyz="-0.0211334 -0.0084321 -0.0097851"/>
+      <geometry>
+        <mesh filename="meshes/onshape_dip_collisions_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_2" type="revolute">
+    <origin rpy="-1.5707964 -1.5707963 0. " xyz="-0.015 0.0143 0.013 "/>
+    <parent link="onshape_pip"/>
+    <child link="onshape_dip"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.5059999" upper="1.8849999" velocity="8.4799992"/>
+  </joint>
+  
+  <link name="onshape_fingertip">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.016"/>
+      <inertia ixx="0.0000034" ixy="0.0000001" ixz="0." iyy="0.0000016" iyz="0." izz="0.0000029"/>
+    </inertial>
+    <visual>
+      <origin rpy="0.0000001 0. 3.1415927" xyz="-0.0132864 -0.0061142 -0.0145 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_fingertip_visuals_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0000001 0. 3.1415927" xyz="-0.0132864 -0.0061142 -0.0145 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_fingertip_collisions_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_3" type="revolute">
+    <origin rpy="-0.0000001 -0.0000001 -0.0000001" xyz="-0. -0.0361 -0.0002"/>
+    <parent link="onshape_dip"/>
+    <child link="onshape_fingertip"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.366" upper="2.0419999" velocity="8.4799992"/>
+  </joint>
+
+  <!-- === FINGER 2 === -->
+  <link name="mcp_joint_2">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.044"/>
+      <inertia ixx="0.0000115" ixy="0.000003" ixz="0.0000001" iyy="0.0000078" iyz="0.0000001" izz="0.0000148"/>
+    </inertial>
+    <visual>
+      <origin rpy="-3.1415925 -0. -3.1415925" xyz="-0.0084069 0.0077662 -0.0146574"/>
+      <geometry>
+        <mesh filename="meshes/mcp_joint_2_visuals_mcp_joint_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-3.1415925 -0. -3.1415925" xyz="-0.0084069 0.0077662 -0.0146574"/>
+      <geometry>
+        <mesh filename="meshes/mcp_joint_2_collisions_mcp_joint_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_5" type="revolute">
+    <origin rpy="-1.5707964 -1.5707964 0. " xyz="-0.0070952 -0.0223922 -0.0187224"/>
+    <parent link="onshape_palm_lower"/>
+    <child link="mcp_joint_2"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.314" upper="2.2299999" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_pip_2">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.032"/>
+      <inertia ixx="0.0000048" ixy="0." ixz="0." iyy="0.0000029" iyz="0." izz="0.0000042"/>
+    </inertial>
+    <visual>
+      <origin rpy="-0.7853982 1.5707963 0.7853981" xyz="-0.0096434 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_pip_2_visuals_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-0.7853982 1.5707963 0.7853981" xyz="-0.0096434 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_pip_2_collisions_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_4" type="revolute">
+    <origin rpy="1.5707963 -0. -1.5707963" xyz="0.0122 0.0381 -0.0145"/>
+    <parent link="mcp_joint_2"/>
+    <child link="onshape_pip_2"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-1.047" upper="1.047" velocity="8.4799992"/>
+  </joint>
+  
+  <link name="onshape_dip_2">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.037"/>
+      <inertia ixx="0.0000055" ixy="-0.0000006" ixz="-0." iyy="0.0000057" iyz="-0." izz="0.0000067"/>
+    </inertial>
+    <visual>
+      <origin rpy="0. 0.0000001 3.1415925" xyz="-0.0211334 -0.0084321 -0.0097851"/>
+      <geometry>
+        <mesh filename="meshes/onshape_dip_2_visuals_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0. 0.0000001 3.1415925" xyz="-0.0211334 -0.0084321 -0.0097851"/>
+      <geometry>
+        <mesh filename="meshes/onshape_dip_2_collisions_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_6" type="revolute">
+    <origin rpy="-1.5707964 -1.5707963 0. " xyz="-0.015 0.0143 0.013 "/>
+    <parent link="onshape_pip_2"/>
+    <child link="onshape_dip_2"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.5059999" upper="1.8849999" velocity="8.4799992"/>
+  </joint>
+
+  <link name="fingertip_2">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.016"/>
+      <inertia ixx="0.0000034" ixy="0.0000001" ixz="0." iyy="0.0000016" iyz="0." izz="0.0000029"/>
+    </inertial>
+    <visual>
+      <origin rpy="0.0000001 0. 3.1415927" xyz="-0.0132864 -0.0061142 -0.0145 "/>
+      <geometry>
+        <mesh filename="meshes/fingertip_2_visuals_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0000001 0. 3.1415927" xyz="-0.0132864 -0.0061142 -0.0145 "/>
+      <geometry>
+        <mesh filename="meshes/fingertip_2_collisions_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_7" type="revolute">
+    <origin rpy="-0.0000001 -0.0000001 -0.0000001" xyz="-0. -0.0361 -0.0002"/>
+    <parent link="onshape_dip_2"/>
+    <child link="fingertip_2"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.366" upper="2.0419999" velocity="8.4799992"/>
+  </joint>
+  
+  <!-- === FINGER 3 === -->
+  <link name="mcp_joint_3">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.044"/>
+      <inertia ixx="0.0000115" ixy="0.000003" ixz="0.0000001" iyy="0.0000078" iyz="0.0000001" izz="0.0000148"/>
+    </inertial>
+    <visual>
+      <origin rpy="-3.1415925 -0. -3.1415925" xyz="-0.0084069 0.0077662 -0.0146574"/>
+      <geometry>
+        <mesh filename="meshes/mcp_joint_3_visuals_mcp_joint_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-3.1415925 -0. -3.1415925" xyz="-0.0084069 0.0077662 -0.0146574"/>
+      <geometry>
+        <mesh filename="meshes/mcp_joint_3_collisions_mcp_joint_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_9" type="revolute">
+    <origin rpy="-1.5707964 -1.5707964 0. " xyz="-0.0070952 -0.0678422 -0.0187224"/>
+    <parent link="onshape_palm_lower"/>
+    <child link="mcp_joint_3"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.314" upper="2.2299999" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_pip_3">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.032"/>
+      <inertia ixx="0.0000048" ixy="0." ixz="0." iyy="0.0000029" iyz="0." izz="0.0000042"/>
+    </inertial>
+    <visual>
+      <origin rpy="-0.7853982 1.5707963 0.7853981" xyz="-0.0096434 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_pip_3_visuals_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-0.7853982 1.5707963 0.7853981" xyz="-0.0096434 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/onshape_pip_3_collisions_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_8" type="revolute">
+    <origin rpy="1.5707963 -0. -1.5707963" xyz="0.0122 0.0381 -0.0145"/>
+    <parent link="mcp_joint_3"/>
+    <child link="onshape_pip_3"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-1.047" upper="1.047" velocity="8.4799992"/>
+  </joint>
+  
+  <link name="onshape_dip_3">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.037"/>
+      <inertia ixx="0.0000055" ixy="-0.0000006" ixz="-0." iyy="0.0000057" iyz="-0." izz="0.0000067"/>
+    </inertial>
+    <visual>
+      <origin rpy="0. 0.0000001 3.1415925" xyz="-0.0211334 -0.0084321 -0.0097851"/>
+      <geometry>
+        <mesh filename="meshes/onshape_dip_3_visuals_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0. 0.0000001 3.1415925" xyz="-0.0211334 -0.0084321 -0.0097851"/>
+      <geometry>
+        <mesh filename="meshes/onshape_dip_3_collisions_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_10" type="revolute">
+    <origin rpy="-1.5707964 -1.5707963 0. " xyz="-0.015 0.0143 0.013 "/>
+    <parent link="onshape_pip_3"/>
+    <child link="onshape_dip_3"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.5059999" upper="1.8849999" velocity="8.4799992"/>
+  </joint>
+
+  <link name="fingertip_3">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.016"/>
+      <inertia ixx="0.0000034" ixy="0.0000001" ixz="0." iyy="0.0000016" iyz="0." izz="0.0000029"/>
+    </inertial>
+    <visual>
+      <origin rpy="0.0000001 0. 3.1415927" xyz="-0.0132864 -0.0061142 -0.0145 "/>
+      <geometry>
+        <mesh filename="meshes/fingertip_3_visuals_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0000001 0. 3.1415927" xyz="-0.0132864 -0.0061142 -0.0145 "/>
+      <geometry>
+        <mesh filename="meshes/fingertip_3_collisions_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_11" type="revolute">
+    <origin rpy="-0.0000001 -0.0000001 -0.0000001" xyz="-0. -0.0361 -0.0002"/>
+    <parent link="onshape_dip_3"/>
+    <child link="fingertip_3"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.366" upper="2.0419999" velocity="8.4799992"/>
+  </joint>
+
+  <!-- === THUMB === -->
+  <link name="pip_4">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.032"/>
+      <inertia ixx="0.0000048" ixy="0." ixz="0." iyy="0.0000029" iyz="0." izz="0.0000042"/>
+    </inertial>
+    <visual>
+      <origin rpy="-1.5707964 1.5707963 0. " xyz="0.0053566 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/pip_4_visuals_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-1.5707964 1.5707963 0. " xyz="0.0053566 0.0003 -0.000784 "/>
+      <geometry>
+        <mesh filename="meshes/pip_4_collisions_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_12" type="revolute">
+    <origin rpy="0. -1.5707963 0. " xyz="-0.0693953 -0.0012422 -0.0216224"/>
+    <parent link="onshape_palm_lower"/>
+    <child link="pip_4"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.349" upper="2.094" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_thumb_pip">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.003"/>
+      <inertia ixx="0.0000006" ixy="0." ixz="0." iyy="0.0000005" iyz="0." izz="0.0000002"/>
+    </inertial>
+    <visual>
+      <origin rpy="-1.5707961 0. 3.1415925" xyz="-0.0119619 0. 0.0158526"/>
+      <geometry>
+        <mesh filename="meshes/onshape_thumb_pip_visuals_thumb_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="-1.5707961 0. 3.1415925" xyz="-0.0119619 0. 0.0158526"/>
+      <geometry>
+        <mesh filename="meshes/onshape_thumb_pip_collisions_thumb_pip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_13" type="revolute">
+    <origin rpy="-1.5707964 -1.5707963 0. " xyz="0. 0.0143 0.013 "/>
+    <parent link="pip_4"/>
+    <child link="onshape_thumb_pip"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-0.47" upper="2.443" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_thumb_dip">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.038"/>
+      <inertia ixx="0.0000085" ixy="0.0000002" ixz="0." iyy="0.0000038" iyz="0." izz="0.0000077"/>
+    </inertial>
+    <visual>
+      <origin rpy="3.1415925 0. -3.1415927" xyz="-0.0439687 0.0579529 0.0086287"/>
+      <geometry>
+        <mesh filename="meshes/onshape_thumb_dip_visuals_thumb_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="3.1415925 0. -3.1415927" xyz="-0.0439687 0.0579529 0.0086287"/>
+      <geometry>
+        <mesh filename="meshes/onshape_thumb_dip_collisions_thumb_dip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_14" type="revolute">
+    <origin rpy="1.5707961 0. -0. " xyz="0. 0.0145 0.017 "/>
+    <parent link="onshape_thumb_pip"/>
+    <child link="onshape_thumb_dip"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-1.2" upper="1.8999999" velocity="8.4799992"/>
+  </joint>
+
+  <link name="onshape_thumb_fingertip">
+    <inertial>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0."/>
+      <mass value="0.049"/>
+      <inertia ixx="0.0000204" ixy="-0.0000005" ixz="-0." iyy="0.0000043" iyz="-0.0000001" izz="0.0000198"/>
+    </inertial>
+    <visual>
+      <origin rpy="3.1415927 0. -3.1415927" xyz="-0.0625595 0.0784597 -0.0489929"/>
+      <geometry>
+        <mesh filename="meshes/onshape_thumb_fingertip_visuals_thumb_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="3.1415927 0. -3.1415927" xyz="-0.0625595 0.0784597 -0.0489929"/>
+      <geometry>
+        <mesh filename="meshes/onshape_thumb_fingertip_collisions_thumb_fingertip_mesh.obj" scale="1. 1. 1."/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="a_15" type="revolute">
+    <origin rpy="-0.0000002 0. 3.1415925" xyz="0. 0.0466 -0.0002"/>
+    <parent link="onshape_thumb_dip"/>
+    <child link="onshape_thumb_fingertip"/>
+    <axis xyz="0. 0. 1."/>
+    <limit effort="0.95" lower="-1.34" upper="1.8799998" velocity="8.4799992"/>
+  </joint>
+
+  <!-- ============================================================================= -->
+  <!-- |                       LEAP HAND FSR SENSORS                               | -->
+  <!-- ============================================================================= -->
+
+  <!-- Joints to attach FSR sensors -->
+  <joint name="dip_1" type="fixed">
+    <origin xyz="0.0090151 -0.0227202 -0.0143087" rpy="1.5707964 -0. -1.5707964"/>
+    <parent link="onshape_dip"/>
+    <child link="dip_1_fsr"/>
+  </joint>
+  <joint name="dip_2_fsr_dip_2" type="fixed">
+    <origin xyz="0.0090151 -0.0227202 -0.0147031" rpy="1.5707964 -0.0000001 -1.5707964"/>
+    <parent link="onshape_dip_2"/>
+    <child link="dip_2_fsr"/>
+  </joint>
+  <joint name="dip_3_fsr_dip_3" type="fixed">
+    <origin xyz="0.0090151 -0.0227202 -0.0145862" rpy="1.5707964 -0.0000001 -1.5707964"/>
+    <parent link="onshape_dip_3"/>
+    <child link="dip_3_fsr"/>
+  </joint>
+  <joint name="palm_1" type="fixed">
+    <origin xyz="-0.0831541 -0.0602582 -0.0340008" rpy="0. 0. 0."/>
+    <parent link="onshape_palm_lower"/>
+    <child link="palm_1_fsr"/>
+  </joint>
+  <joint name="palm_2" type="fixed">
+    <origin xyz="-0.0468608 0.008549 -0.0340008" rpy="0. 0. 0."/>
+    <parent link="onshape_palm_lower"/>
+    <child link="palm_2_fsr"/>
+  </joint>
+  <joint name="palm_3" type="fixed">
+    <origin xyz="-0.0468608 -0.0369062 -0.0340008" rpy="0. 0. 0."/>
+    <parent link="onshape_palm_lower"/>
+    <child link="palm_3_fsr"/>
+  </joint>
+  <joint name="palm_4" type="fixed">
+    <origin xyz="-0.0470055 -0.0770667 -0.0340008" rpy="0. 0. 0."/>
+    <parent link="onshape_palm_lower"/>
+    <child link="palm_4_fsr"/>
+  </joint>
+  <joint name="pip_1" type="fixed">
+    <origin xyz="0.0019601 -0.0000087 0.0230151" rpy="3.1415925 0. 3.1415925"/>
+    <parent link="onshape_pip"/>
+    <child link="pip_1_fsr"/>
+  </joint>
+  <joint name="pip_2_fsr_pip_2" type="fixed">
+    <origin xyz="0.0019601 -0.0002805 0.0230151" rpy="3.1415925 0. 3.1415925"/>
+    <parent link="onshape_pip_2"/>
+    <child link="pip_2_fsr"/>
+  </joint>
+  <joint name="pip_3_fsr_pip_3" type="fixed">
+    <origin xyz="0.0019601 0.0007753 0.0230151" rpy="3.1415925 0. 3.1415925"/>
+    <parent link="onshape_pip_3"/>
+    <child link="pip_3_fsr"/>
+  </joint>
+  <joint name="thumb_dip_fsr_thumb_dip" type="fixed">
+    <origin xyz="0.0094383 -0.017675 0.0144321" rpy="3.1415927 0. 0.0000001"/>
+    <parent link="onshape_thumb_fingertip"/>
+    <child link="thumb_dip_fsr"/>
+  </joint>
+  <joint name="thumb_pip_fsr_thumb_pip" type="fixed">
+    <origin xyz="-0.0094383 0.0205035 0.0142321" rpy="3.1415925 0. -3.1415927"/>
+    <parent link="onshape_thumb_dip"/>
+    <child link="thumb_pip_fsr"/>
+  </joint>
+  <joint name="thumb_tip" type="fixed">
+    <origin xyz="0.0102383 -0.0453895 0.0144321" rpy="3.1415927 0. 0.0000001"/>
+    <parent link="onshape_thumb_fingertip"/>
+    <child link="thumb_tip_fsr"/>
+  </joint>
+  <joint name="tip_1" type="fixed">
+    <origin xyz="0.0102151 -0.0326103 -0.0141088" rpy="1.5707963 0.0000001 -1.5707963"/>
+    <parent link="onshape_fingertip"/>
+    <child link="tip_1_fsr"/>
+  </joint>
+  <joint name="tip_2" type="fixed">
+    <origin xyz="0.0102151 -0.0326103 -0.0144487" rpy="1.5707963 0.0000001 -1.5707963"/>
+    <parent link="fingertip_2"/>
+    <child link="tip_2_fsr"/>
+  </joint>
+  <joint name="tip_3" type="fixed">
+    <origin xyz="0.0102151 -0.0326103 -0.0140386" rpy="1.5707963 0.0000001 -1.5707963"/>
+    <parent link="fingertip_3"/>
+    <child link="tip_3_fsr"/>
+  </joint>
+
+  <!-- Links for FSR sensors -->
+  <link name="dip_1_fsr">
+    <visual>
+      <origin xyz="0. 0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/dip_1_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/dip_1_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
+    </collision>
+  </link>
+  <link name="dip_2_fsr">
+    <visual>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_2_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_2_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
+    </collision>
+  </link>
+  <link name="dip_3_fsr">
+    <visual>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_3_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_3_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
+    </collision>
+  </link>
+  <link name="palm_1_fsr">
+    <visual>
+      <origin xyz="0.0046004 0. 0. " rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_1_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0.0046004 0. 0. " rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_1_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="palm_2_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_2_fsr_Cube.obj" scale="0.5 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_2_fsr_Cube.obj" scale="0.5 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="palm_3_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_3_fsr_Cube.obj" scale="0.5 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_3_fsr_Cube.obj" scale="0.5 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="palm_4_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_4_fsr_Cube.obj" scale="0.5 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/palm_4_fsr_Cube.obj" scale="0.5 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="pip_1_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/pip_1_fsr_Cube.obj" scale="0.3 0.6 0.1"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/pip_1_fsr_Cube.obj" scale="0.3 0.6 0.1"/></geometry>
+    </collision>
+  </link>
+  <link name="pip_2_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/pip_2_fsr_Cube.obj" scale="0.3 0.6 0.1"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/pip_2_fsr_Cube.obj" scale="0.3 0.6 0.1"/></geometry>
+    </collision>
+  </link>
+  <link name="pip_3_fsr">
+    <visual>
+      <origin xyz="0. -0.00063 -0. " rpy="0. 0. 0."/><geometry><mesh filename="meshes/pip_3_fsr_Cube.obj" scale="0.3 0.6 0.1"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. -0.00063 -0. " rpy="0. 0. 0."/><geometry><mesh filename="meshes/pip_3_fsr_Cube.obj" scale="0.3 0.6 0.1"/></geometry>
+    </collision>
+  </link>
+  <link name="thumb_dip_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_dip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_dip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
+    </collision>
+  </link>
+  <link name="thumb_pip_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_pip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_pip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
+    </collision>
+  </link>
+  <link name="thumb_tip_fsr">
+    <visual>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_tip_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_tip_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="tip_1_fsr">
+    <visual>
+      <origin xyz="0. -0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/tip_1_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. -0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/tip_1_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="tip_2_fsr">
+    <visual>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/tip_2_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/tip_2_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </collision>
+  </link>
+  <link name="tip_3_fsr">
+    <visual>
+      <origin xyz="0. -0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/tip_3_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0. -0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/tip_3_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+    </collision>
+  </link>
+
+</robot>
