@@ -282,8 +282,17 @@ int main(int argc, char** argv)
         return 1;
     }
 
+
     std::shared_ptr<YAML::Node> yml(new YAML::Node);
     *yml = YAML::LoadFile(argv[1]);
+
+    const std::string data_dir = (*yml)["data_dir"].as<std::string>();
+    std::string _gt_dir;
+    _gt_dir = data_dir+"/annotated_poses/";
+
+    Eigen::Matrix3f cam_K;
+    Utils::parseMatrixTxt(data_dir+"/cam_K.txt", cam_K);
+
 
     DataLoaderYcbineoat data_loader(yml);
     Bundler bundler(yml, &data_loader);
@@ -320,8 +329,19 @@ int main(int argc, char** argv)
     int frame_id = 0;
 
     // warm start pose (match offline tracking behavior)
-    Eigen::Matrix4f last_pose_in_model = data_loader._ob_in_cam0.inverse();
+
+    Eigen::Matrix4f _ob_in_cam0;
+    {
+        std::vector<std::string> gt_files;
+        Utils::readDirectory(_gt_dir, gt_files);
+        assert(gt_files.size()>0);
+        Utils::parsePoseTxt(_gt_dir + gt_files[0], _ob_in_cam0);
+    };
+    Eigen::Matrix4f last_pose_in_model = _ob_in_cam0.inverse();
     bool last_pose_valid = true;
+
+
+    PointCloudRGBNormal::Ptr _real_model;
 
     while (true)
     {
@@ -457,7 +477,7 @@ int main(int argc, char** argv)
         }
 
         // ---------- K ----------
-        Eigen::Matrix3f K = data_loader._K;
+        Eigen::Matrix3f K = cam_K;
         if (req.contains("K")) {
             auto k = req["K"];
             if (k.size() == 9) {
@@ -483,7 +503,6 @@ int main(int argc, char** argv)
         } else {
             // warm start from last frame (tracking mode)
             if (last_pose_valid) pose_in_model = last_pose_in_model;
-            else if (frame_id == 0) pose_in_model = data_loader._ob_in_cam0.inverse();
         }
 
         std::string id_str = std::to_string(frame_id);
@@ -529,7 +548,7 @@ int main(int argc, char** argv)
             frame_id, id_str,
             K, yml,
             NULL,
-            data_loader._real_model
+            _real_model
         ));
 
         // ---------- inference ----------
