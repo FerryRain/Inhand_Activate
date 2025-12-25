@@ -12,6 +12,7 @@ import math
 import zmq
 import numpy as np
 import cv2
+from Azure_camera import AzureKinectDK
 
 
 # =========================
@@ -440,8 +441,6 @@ if __name__ == "__main__":
     k4a_depth_mode = "NFOV_UNBINNED"  # NFOV_UNBINNED/WFOV_UNBINNED/...
     k4a_fps = 30
 
-    # 为了保持你原来 640x480 的推理速度，可以开启输出 resize：
-    out_size = None  # (W,H) or None
 
     # ---------- init ----------
     sock = make_client(addr=addr, timeout_ms=10000)
@@ -449,12 +448,15 @@ if __name__ == "__main__":
 
     segmenter = SamSegmenter(checkpoint=checkpoint, model_cfg=model_cfg, device=device, use_amp=use_amp)
 
-    k4a, K_native, native_wh = start_azure_kinect(color_res=k4a_color_res, fps=k4a_fps, depth_mode=k4a_depth_mode)
-    if out_size is not None:
-        K = scale_K_for_resize(K_native, src_wh=native_wh, dst_wh=out_size)
-        print(f"[K4A] Resize enabled: {native_wh[0]}x{native_wh[1]} -> {out_size[0]}x{out_size[1]}")
-    else:
-        K = K_native
+    camera = AzureKinectDK(color_res=k4a_color_res, fps=k4a_fps, depth_mode=k4a_depth_mode)
+    camera.start_init()
+    # k4a, K_native, native_wh = start_azure_kinect(color_res=k4a_color_res, fps=k4a_fps, depth_mode=k4a_depth_mode)
+    # if out_size is not None:
+    #     K = scale_K_for_resize(K_native, src_wh=native_wh, dst_wh=out_size)
+    #     print(f"[K4A] Resize enabled: {native_wh[0]}x{native_wh[1]} -> {out_size[0]}x{out_size[1]}")
+    # else:
+    #     K = K_native
+    K = camera.K_color
 
     win = "Azure Kinect DK + SAM2 bbox prompt (s:init ROI | r:reset | q:quit)"
     cv2.namedWindow(win, cv2.WINDOW_NORMAL)
@@ -470,7 +472,8 @@ if __name__ == "__main__":
 
     try:
         while True:
-            color, depth_mm = get_k4a_frame(k4a, out_size=out_size, require_aligned_depth=True)
+            # color, depth_mm = get_k4a_frame(k4a, out_size=out_size, require_aligned_depth=True)
+            color, depth_mm = camera.get_k4a_frame(require_aligned_depth=True)
             if color is None:
                 continue
 
