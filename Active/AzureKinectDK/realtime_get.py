@@ -249,7 +249,7 @@ class SamSegmenter:
 def main():
     addr = "tcp://127.0.0.1:5550"
 
-    checkpoint = "../sam2.1_hiera_tiny.pt"
+    checkpoint = "sam_model/sam2.1_hiera_tiny.pt"
     model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
     device = "cuda"
     use_amp = True
