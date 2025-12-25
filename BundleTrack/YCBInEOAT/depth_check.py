@@ -6,5 +6,5 @@
 @Copyright：©2024-2025 ShanghaiTech University-RIMLAB
 """
 import cv2, numpy as np
-d = cv2.imread("/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/depth/00013_1765959166369.png", cv2.IMREAD_UNCHANGED)
+d = cv2.imread("/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/YCBInEOAT/mustard0/keyframes/depth/1581120437499922925_depth.png", cv2.IMREAD_UNCHANGED)
 print(d.dtype, d.min(), d.max(), np.median(d[d>0]))

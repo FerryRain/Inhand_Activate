@@ -68,7 +68,7 @@ def run_one_video(data_dir,model_name,model_dir,cfg1,port):
   with open(tmp_config_dir,'w') as ff:
     yaml.dump(cfg,ff)
 
-  cmd = f'{code_dir}/../build/test {tmp_config_dir}'
+  cmd = f'{code_dir}/../build/bundle_track_ycbineoat {tmp_config_dir}'
   print(cmd)
   try:
     subprocess.call(cmd,shell=True)

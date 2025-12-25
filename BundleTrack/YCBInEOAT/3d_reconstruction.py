@@ -5,12 +5,20 @@ import cv2
 import open3d as o3d
 
 # ===================== 路径 =====================
-ROOT = "./inhand_object2"
+ROOT="./mustard0"
+# ROOT = "./inhand_object2"
 RGB_GLOB   = f"{ROOT}/rgb/*.png"
 DEPTH_GLOB = f"{ROOT}/depth/*.png"
 MASK_GLOB  = f"{ROOT}/masks/*.png"
 POSE_GLOB  = f"{ROOT}/poses/*.txt"
 K_PATH     = f"{ROOT}/cam_K.txt"
+
+# ROOT = "/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/YCBInEOAT/mustard0/keyframes"
+# RGB_GLOB   = f"{ROOT}/rgb_full/*.jpg"
+# DEPTH_GLOB = f"{ROOT}/depth/*.png"
+# MASK_GLOB  = f"{ROOT}/mask/*.png"
+# POSE_GLOB  = f"{ROOT}/poses/*.txt"
+# K_PATH     = f"{ROOT}/cam_K.txt"
 
 OUT_DIR = os.path.join(ROOT, "outputs_clean")
 POSE_VIZ_DIR = os.path.join(OUT_DIR, "pose_viz")

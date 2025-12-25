@@ -75,6 +75,7 @@ public:
 
 
 public:
+  void saveKeyframeResult(const std::shared_ptr<Frame>& frame);
   Bundler(std::shared_ptr<YAML::Node> yml1, DataLoaderBase *data_loader);
   Bundler(std::shared_ptr<YAML::Node> yml1, Eigen::Matrix3f c_K);
   void processNewFrame(std::shared_ptr<Frame> frame);
@@ -84,6 +85,9 @@ public:
   void selectKeyFramesForBA();
   void saveNewframeResult();
   void saveNewframeResult1();
+  // Bundler.h
+
+
 
 };
 

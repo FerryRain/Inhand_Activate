@@ -68,6 +68,210 @@ Bundler::Bundler(std::shared_ptr<YAML::Node> yml1, Eigen::Matrix3f c_K)
   _fm = std::make_shared<Lfnet>(yml, this);
 }
 
+static inline bool projectCamPoint(const Eigen::Vector3f& Pc,
+                                   const Eigen::Matrix3f& K,
+                                   cv::Point2f& uv)
+{
+  if (Pc.z() <= 1e-6f) return false;
+  float fx = K(0,0), fy = K(1,1), cx = K(0,2), cy = K(1,2);
+  uv.x = fx * (Pc.x() / Pc.z()) + cx;
+  uv.y = fy * (Pc.y() / Pc.z()) + cy;
+  return true;
+}
+
+
+static inline void drawPose6DOnImage(
+    cv::Mat& img,
+    const Eigen::Matrix4f& T_obj_in_cam,
+    const Eigen::Matrix3f& K,
+    float axis_len = 0.05f,
+    int thickness = 2,
+    cv::Point text_org = cv::Point(5, 60))
+{
+  Eigen::Matrix3f R = T_obj_in_cam.block<3,3>(0,0);
+  Eigen::Vector3f t = T_obj_in_cam.block<3,1>(0,3);
+
+  Eigen::Vector3f O = t;
+  Eigen::Vector3f X = t + R * Eigen::Vector3f(axis_len, 0, 0);
+  Eigen::Vector3f Y = t + R * Eigen::Vector3f(0, axis_len, 0);
+  Eigen::Vector3f Z = t + R * Eigen::Vector3f(0, 0, axis_len);
+
+  cv::Point2f o2, x2, y2, z2;
+  if (projectCamPoint(O, K, o2))
+  {
+    cv::circle(img, o2, 3, cv::Scalar(0,255,255), -1, cv::LINE_AA);
+    if (projectCamPoint(X, K, x2)) cv::line(img, o2, x2, cv::Scalar(0,0,255), thickness, cv::LINE_AA);
+    if (projectCamPoint(Y, K, y2)) cv::line(img, o2, y2, cv::Scalar(0,255,0), thickness, cv::LINE_AA);
+    if (projectCamPoint(Z, K, z2)) cv::line(img, o2, z2, cv::Scalar(255,0,0), thickness, cv::LINE_AA);
+  }
+
+  Eigen::Vector3f ypr = R.eulerAngles(2,1,0);
+  float yaw   = ypr[0] * 180.0f / float(M_PI);
+  float pitch = ypr[1] * 180.0f / float(M_PI);
+  float roll  = ypr[2] * 180.0f / float(M_PI);
+
+  std::ostringstream ss1, ss2;
+  ss1 << std::fixed << std::setprecision(4)
+      << "t = [" << t.x() << ", " << t.y() << ", " << t.z() << "]";
+  ss2 << std::fixed << std::setprecision(2)
+      << "rpy(deg) = [" << roll << ", " << pitch << ", " << yaw << "]";
+
+  cv::putText(img, ss1.str(), text_org, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0,255,255), 1, cv::LINE_AA);
+  cv::putText(img, ss2.str(), text_org + cv::Point(0, 22), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0,255,255), 1, cv::LINE_AA);
+}
+
+
+
+static inline void ensure_dir(const std::string& dir)
+{
+  if (!boost::filesystem::exists(dir))
+    boost::filesystem::create_directories(dir);
+}
+
+
+static inline cv::Mat normalize_mask_u8_255(const cv::Mat& in_mask)
+{
+  if (in_mask.empty()) return cv::Mat();
+
+  cv::Mat m;
+  if (in_mask.type() != CV_8U)
+    in_mask.convertTo(m, CV_8U);
+  else
+    m = in_mask;
+
+  double maxv = 0.0;
+  cv::minMaxLoc(m, nullptr, &maxv);
+  if (maxv <= 1.0) m *= 255;
+
+  return m;
+}
+
+
+void Bundler::saveKeyframeResult(const std::shared_ptr<Frame>& frame)
+{
+  if (!frame) return;
+
+  const std::string debug_dir = (*yml)["debug_dir"].as<std::string>();
+  const std::string base_dir  = debug_dir + "/keyframes/";
+
+  const std::string rgb_dir_full = base_dir + "rgb_full/";
+  const std::string rgb_dir_obj  = base_dir + "rgb_obj/";
+  const std::string depth_dir    = base_dir + "depth/";
+  const std::string mask_dir     = base_dir + "mask/";
+  const std::string pose_dir     = base_dir + "poses/";
+  const std::string viz_dir      = base_dir + "viz/";
+
+  auto ensure_dir = [](const std::string& d){
+    if (!boost::filesystem::exists(d)) boost::filesystem::create_directories(d);
+  };
+  ensure_dir(rgb_dir_full);
+  ensure_dir(rgb_dir_obj);
+  ensure_dir(depth_dir);
+  ensure_dir(mask_dir);
+  ensure_dir(pose_dir);
+  ensure_dir(viz_dir);
+
+  // ---------------- pose ----------------
+  Eigen::Matrix4f cur_in_model = frame->_pose_in_model;
+  Eigen::Matrix4f ob_in_cam    = cur_in_model.inverse();
+
+  {
+    std::ofstream ff(pose_dir + frame->_id_str + ".txt");
+    ff << std::setprecision(10) << ob_in_cam << std::endl;
+    ff.close();
+  }
+
+  // ---------------- save rgb_full: use _vis ----------------
+  if (!frame->_vis.empty())
+  {
+    cv::imwrite(rgb_dir_full + frame->_id_str + ".jpg",
+                frame->_vis, {CV_IMWRITE_JPEG_QUALITY, 95});
+  }
+
+  // ---------------- save rgb_obj: masked object-only  ----------------
+  if (!frame->_color.empty())
+  {
+    cv::imwrite(rgb_dir_obj + frame->_id_str + ".jpg",
+                frame->_color, {CV_IMWRITE_JPEG_QUALITY, 95});
+  }
+
+  // ---------------- save mask ----------------
+  if (!frame->_fg_mask.empty())
+  {
+    cv::Mat m = frame->_fg_mask;
+    if (m.type() != CV_8U) m.convertTo(m, CV_8U);
+
+    double maxv = 0.0;
+    cv::minMaxLoc(m, nullptr, &maxv);
+    if (maxv <= 1.0) m *= 255;
+
+    cv::imwrite(mask_dir + frame->_id_str + ".png", m);
+  }
+
+  // ---------------- save depth ----------------
+
+  if (!frame->_depth.empty())
+  {
+    const cv::Mat& depth = frame->_depth;
+    const std::string out_path = depth_dir + frame->_id_str + ".png";
+
+    cv::Mat d16;
+
+    if (depth.type() == CV_16U || depth.type() == CV_16UC1)
+    {
+      // 原本就是毫米 uint16，直接存
+      d16 = depth;
+    }
+    else if (depth.type() == CV_32F || depth.type() == CV_32FC1 ||
+             depth.type() == CV_64F || depth.type() == CV_64FC1)
+    {
+      // 这里假设 depth 是“米”，恢复成“毫米”再存 PNG
+      cv::Mat d32;
+      depth.convertTo(d32, CV_32F);
+      d32 = d32 * 1000.0f;          // m -> mm（恢复原始深度的数值范围）
+      d32.convertTo(d16, CV_16U);   // 饱和转换
+    }
+    else
+    {
+      // 兜底：直接转 16U（不推荐但防崩）
+      depth.convertTo(d16, CV_16U);
+    }
+
+    cv::imwrite(out_path, d16);
+  }
+
+
+  cv::Mat base;
+  if (!frame->_vis.empty()) base = frame->_vis.clone();
+  else if (!frame->_color.empty()) base = frame->_color.clone();
+  else return;
+
+  if (!frame->_fg_mask.empty() && base.rows == frame->_fg_mask.rows && base.cols == frame->_fg_mask.cols)
+  {
+    cv::Mat m = frame->_fg_mask;
+    if (m.type() != CV_8U) m.convertTo(m, CV_8U);
+
+    double maxv = 0.0;
+    cv::minMaxLoc(m, nullptr, &maxv);
+    if (maxv <= 1.0) m *= 255;
+
+    cv::Mat dark;
+    base.convertTo(dark, -1, 0.2, 0.0);
+
+    cv::Mat inv;
+    cv::bitwise_not(m, inv);
+    dark.copyTo(base, inv);
+  }
+
+  drawPose6DOnImage(base, ob_in_cam, _K, 0.05f, 2, cv::Point(5, 60));
+  cv::putText(base, frame->_id_str, {5,30},
+              cv::FONT_HERSHEY_PLAIN, 2, {255,0,0}, 1, cv::LINE_AA);
+
+  cv::imwrite(viz_dir + frame->_id_str + "_viz.jpg",
+              base, {CV_IMWRITE_JPEG_QUALITY, 90});
+}
+
+
 
 void Bundler::processNewFrame(std::shared_ptr<Frame> frame)
 {
@@ -201,6 +405,7 @@ void Bundler::checkAndAddKeyframe(std::shared_ptr<Frame> frame)
   if (frame->_id==0)
   {
     _keyframes.push_back(frame);
+    saveKeyframeResult(frame);
     return;
   }
   if (frame->_status!=Frame::OTHER) return;
@@ -230,6 +435,7 @@ void Bundler::checkAndAddKeyframe(std::shared_ptr<Frame> frame)
 
 
   _keyframes.push_back(frame);
+  saveKeyframeResult(frame);
 }
 
 
@@ -373,72 +579,6 @@ void Bundler::optimizeGPU()
 }
 
 
-static inline void readK(const cv::Mat& K, double& fx, double& fy, double& cx, double& cy)
-{
-  CV_Assert(K.rows == 3 && K.cols == 3);
-  if (K.type() == CV_64F)
-  {
-    fx = K.at<double>(0,0); fy = K.at<double>(1,1);
-    cx = K.at<double>(0,2); cy = K.at<double>(1,2);
-  }
-  else
-  {
-    fx = K.at<float>(0,0); fy = K.at<float>(1,1);
-    cx = K.at<float>(0,2); cy = K.at<float>(1,2);
-  }
-}
-
-static inline bool projectCamPoint(const Eigen::Vector3f& Pc,
-                                   const Eigen::Matrix3f& K,
-                                   cv::Point2f& uv)
-{
-  if (Pc.z() <= 1e-6f) return false;
-  float fx = K(0,0), fy = K(1,1), cx = K(0,2), cy = K(1,2);
-  uv.x = fx * (Pc.x() / Pc.z()) + cx;
-  uv.y = fy * (Pc.y() / Pc.z()) + cy;
-  return true;
-}
-
-
-static inline void drawPose6DOnImage(
-    cv::Mat& img,
-    const Eigen::Matrix4f& T_obj_in_cam,
-    const Eigen::Matrix3f& K,
-    float axis_len = 0.05f,
-    int thickness = 2,
-    cv::Point text_org = cv::Point(5, 60))
-{
-  Eigen::Matrix3f R = T_obj_in_cam.block<3,3>(0,0);
-  Eigen::Vector3f t = T_obj_in_cam.block<3,1>(0,3);
-
-  Eigen::Vector3f O = t;
-  Eigen::Vector3f X = t + R * Eigen::Vector3f(axis_len, 0, 0);
-  Eigen::Vector3f Y = t + R * Eigen::Vector3f(0, axis_len, 0);
-  Eigen::Vector3f Z = t + R * Eigen::Vector3f(0, 0, axis_len);
-
-  cv::Point2f o2, x2, y2, z2;
-  if (projectCamPoint(O, K, o2))
-  {
-    cv::circle(img, o2, 3, cv::Scalar(0,255,255), -1, cv::LINE_AA);
-    if (projectCamPoint(X, K, x2)) cv::line(img, o2, x2, cv::Scalar(0,0,255), thickness, cv::LINE_AA);
-    if (projectCamPoint(Y, K, y2)) cv::line(img, o2, y2, cv::Scalar(0,255,0), thickness, cv::LINE_AA);
-    if (projectCamPoint(Z, K, z2)) cv::line(img, o2, z2, cv::Scalar(255,0,0), thickness, cv::LINE_AA);
-  }
-
-  Eigen::Vector3f ypr = R.eulerAngles(2,1,0);
-  float yaw   = ypr[0] * 180.0f / float(M_PI);
-  float pitch = ypr[1] * 180.0f / float(M_PI);
-  float roll  = ypr[2] * 180.0f / float(M_PI);
-
-  std::ostringstream ss1, ss2;
-  ss1 << std::fixed << std::setprecision(4)
-      << "t = [" << t.x() << ", " << t.y() << ", " << t.z() << "]";
-  ss2 << std::fixed << std::setprecision(2)
-      << "rpy(deg) = [" << roll << ", " << pitch << ", " << yaw << "]";
-
-  cv::putText(img, ss1.str(), text_org, cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0,255,255), 1, cv::LINE_AA);
-  cv::putText(img, ss2.str(), text_org + cv::Point(0, 22), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(0,255,255), 1, cv::LINE_AA);
-}
 
 
 void Bundler::saveNewframeResult1()

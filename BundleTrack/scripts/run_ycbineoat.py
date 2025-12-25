@@ -58,7 +58,7 @@ def run_one_video(data_dir,model_name,model_dir,cfg1,port):
   cfg['model_name'] = model_name
   cfg['model_dir'] = model_dir
   cfg['debug_dir'] = cur_out_dir
-  cfg['LOG'] = 1
+  cfg['LOG'] = 0
   cfg['port'] = port
   tmp_config_dir = '/tmp/config_{}.yml'.format(name)
   with open(tmp_config_dir,'w') as ff:
