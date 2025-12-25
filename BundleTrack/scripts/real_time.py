@@ -51,7 +51,8 @@ def run_one_video(data_dir,cfg1,port):
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/Real_time_vis')
+    parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/Real_time_vis/AzureKinectDK')
+    # parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/Real_time_vis/Realsense')
     parser.add_argument('--port', type=int, default=5555)
 
 
