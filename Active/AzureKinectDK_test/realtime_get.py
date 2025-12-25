@@ -1,9 +1,8 @@
 """
-@FileName：realtime_get.py
-@Description：
-@Author：Ferry
-@Time：2025 12/25/25 3:57 PM
-@Copyright：©2024-2025 ShanghaiTech University-RIMLAB
+@FileName: realtime_get.py
+@Description:
+@Author: Ferry
+@Time: 2025/12/25 3:57 PM
 """
 
 import json
@@ -12,27 +11,30 @@ import math
 import zmq
 import numpy as np
 import cv2
+
 from Azure_camera import AzureKinectDK
 
 
-# =========================
-# ZMQ + ROI utils
-# =========================
-def bbox_from_mask(mask, pad=5):
-    """mask: HxW (0/1 or 0/255). Return roi [x0,x1,y0,y1] or None if empty."""
-    ys, xs = np.where(mask > 0)
-    if xs.size == 0 or ys.size == 0:
+# -------------------------
+# ROI / ZMQ
+# -------------------------
+def bbox_from_mask(mask01: np.ndarray, pad: int = 5):
+    """mask01: HxW uint8 {0,1}. Return [x0,x1,y0,y1] or None."""
+    ys, xs = np.where(mask01 > 0)
+    if xs.size == 0:
         return None
-    x0, x1 = xs.min(), xs.max()
-    y0, y1 = ys.min(), ys.max()
+
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+
     x0 = max(0, x0 - pad)
     y0 = max(0, y0 - pad)
-    x1 = min(mask.shape[1] - 1, x1 + pad)
-    y1 = min(mask.shape[0] - 1, y1 + pad)
-    return [int(x0), int(x1), int(y0), int(y1)]
+    x1 = min(mask01.shape[1] - 1, x1 + pad)
+    y1 = min(mask01.shape[0] - 1, y1 + pad)
+    return [x0, x1, y0, y1]
 
 
-def make_client(addr="tcp://127.0.0.1:5550", timeout_ms=10000):
+def make_client(addr: str = "tcp://127.0.0.1:5550", timeout_ms: int = 10000):
     ctx = zmq.Context.instance()
     sock = ctx.socket(zmq.REQ)
     sock.connect(addr)
@@ -44,42 +46,38 @@ def make_client(addr="tcp://127.0.0.1:5550", timeout_ms=10000):
 
 def send_frame_with_sock(
         sock,
-        color_bgr,              # uint8 HxWx3 (BGR)
-        depth,                  # uint16 HxW (mm)
-        mask=None,              # uint8 HxW (0/1 or 0/255). Optional
-        depth_type="uint16",
-        id_str="00000",
-        roi=None,               # [x0,x1,y0,y1] optional
-        ob_in_cam=None,         # 4x4 float32 optional
-        has_init=False,
+        color_bgr: np.ndarray,          # uint8 HxWx3
+        depth_mm: np.ndarray,           # uint16 HxW
+        mask: np.ndarray | None = None, # uint8 HxW (0/1 or 0/255)
+        id_str: str = "000000",
+        roi=None,                       # [x0,x1,y0,y1]
+        ob_in_cam: np.ndarray | None = None,
+        has_init: bool = False,
 ):
-    assert color_bgr is not None and depth is not None
     H, W = color_bgr.shape[:2]
-    assert depth.shape[0] == H and depth.shape[1] == W
+    assert depth_mm.shape[:2] == (H, W)
 
     has_mask = mask is not None
+    mask01 = None
     if has_mask:
         if mask.ndim == 3:
             mask = mask[..., 0]
-        if mask.dtype != np.uint8:
-            mask = mask.astype(np.uint8)
         mask01 = (mask > 0).astype(np.uint8)
-    else:
-        mask01 = None
 
     header = {
         "H": int(H),
         "W": int(W),
         "color_ch": 3,
-        "depth_type": str(depth_type),   # "uint16"
+        "depth_type": "uint16",
         "id_str": str(id_str),
         "has_init": bool(has_init),
         "has_mask": bool(has_mask),
     }
 
+    # roi：优先使用显式 roi；否则从 mask 自动生成
     if roi is not None:
         header["roi"] = [float(x) for x in roi]
-    elif has_mask:
+    elif mask01 is not None:
         auto_roi = bbox_from_mask(mask01, pad=5)
         if auto_roi is not None:
             header["roi"] = [float(x) for x in auto_roi]
@@ -91,9 +89,9 @@ def send_frame_with_sock(
     parts = [
         json.dumps(header).encode("utf-8"),
         color_bgr.tobytes(),
-        depth.tobytes(),
+        depth_mm.tobytes(),
     ]
-    if has_mask:
+    if mask01 is not None:
         parts.append(mask01.tobytes())
 
     sock.send_multipart(parts)
@@ -102,29 +100,24 @@ def send_frame_with_sock(
     return T, resp
 
 
-# =========================
-# Pose init from mask+depth
-# =========================
+# -------------------------
+# Init pose from mask+depth
+# -------------------------
 def compute_center3d_from_mask_depth_mm(mask01, depth_mm, fx, fy, cx, cy):
-    """
-    mask01: 0/1
-    depth_mm: uint16, millimeters (ALIGNED to color!)
-    return center3d (meters) in camera frame, or None
-    """
+    """Return center3d in camera frame (meters), or None."""
     ys, xs = np.nonzero(mask01 > 0)
     if xs.size == 0:
         return None
 
-    u = float(xs.mean())
-    v = float(ys.mean())
+    u, v = float(xs.mean()), float(ys.mean())
 
-    dvals = depth_mm[mask01 > 0].astype(np.float32)
-    dvals = dvals[np.isfinite(dvals)]
-    dvals = dvals[dvals > 0]
-    if dvals.size == 0:
+    d = depth_mm[mask01 > 0].astype(np.float32)
+    d = d[np.isfinite(d)]
+    d = d[d > 0]
+    if d.size == 0:
         return None
 
-    z = float(np.median(dvals)) / 1000.0  # m
+    z = float(np.median(d)) / 1000.0
     X = (u - cx) * z / fx
     Y = (v - cy) * z / fy
     return np.array([X, Y, z], dtype=np.float32)
@@ -136,14 +129,14 @@ def make_ob_in_cam_from_center(center3d_m):
     return T
 
 
-# =========================
-# Local visualization (mask + 6D pose)
-# =========================
+# -------------------------
+# Visualization
+# -------------------------
 def overlay_mask(bgr, mask01, alpha=0.45):
     if mask01 is None:
         return bgr
     vis = bgr.copy()
-    m = (mask01 > 0)
+    m = mask01 > 0
     if m.any():
         overlay = vis.copy()
         overlay[m] = (0, 255, 0)
@@ -162,10 +155,7 @@ def project_cam_point(Pc, K):
 
 
 def rpy_from_R_zyx(R):
-    """
-    对齐 Eigen::Matrix3f::eulerAngles(2,1,0):
-    yaw(z), pitch(y), roll(x), 最终显示 [roll, pitch, yaw]
-    """
+    """Match Eigen eulerAngles(2,1,0): yaw(z), pitch(y), roll(x)."""
     r00, r01, r02 = R[0, 0], R[0, 1], R[0, 2]
     r10, r11, r12 = R[1, 0], R[1, 1], R[1, 2]
     r20, r21, r22 = R[2, 0], R[2, 1], R[2, 2]
@@ -174,10 +164,11 @@ def rpy_from_R_zyx(R):
     pitch = math.atan2(-r20, math.sqrt(r21 * r21 + r22 * r22))
     roll = math.atan2(r21, r22)
 
-    roll_deg = roll * 180.0 / math.pi
-    pitch_deg = pitch * 180.0 / math.pi
-    yaw_deg = yaw * 180.0 / math.pi
-    return roll_deg, pitch_deg, yaw_deg
+    return (
+        roll * 180.0 / math.pi,
+        pitch * 180.0 / math.pi,
+        yaw * 180.0 / math.pi,
+    )
 
 
 def draw_pose6d_on_image(img_bgr, T_obj_in_cam, K, axis_len=0.05, thickness=2, text_org=(5, 60)):
@@ -194,20 +185,11 @@ def draw_pose6d_on_image(img_bgr, T_obj_in_cam, K, axis_len=0.05, thickness=2, t
         o2i = (int(round(o2[0])), int(round(o2[1])))
         cv2.circle(img_bgr, o2i, 3, (0, 255, 255), -1, cv2.LINE_AA)
 
-        x2 = project_cam_point(X, K)
-        if x2 is not None:
-            x2i = (int(round(x2[0])), int(round(x2[1])))
-            cv2.line(img_bgr, o2i, x2i, (0, 0, 255), thickness, cv2.LINE_AA)
-
-        y2 = project_cam_point(Y, K)
-        if y2 is not None:
-            y2i = (int(round(y2[0])), int(round(y2[1])))
-            cv2.line(img_bgr, o2i, y2i, (0, 255, 0), thickness, cv2.LINE_AA)
-
-        z2 = project_cam_point(Z, K)
-        if z2 is not None:
-            z2i = (int(round(z2[0])), int(round(z2[1])))
-            cv2.line(img_bgr, o2i, z2i, (255, 0, 0), thickness, cv2.LINE_AA)
+        for P, col in [(X, (0, 0, 255)), (Y, (0, 255, 0)), (Z, (255, 0, 0))]:
+            p2 = project_cam_point(P, K)
+            if p2 is not None:
+                p2i = (int(round(p2[0])), int(round(p2[1])))
+                cv2.line(img_bgr, o2i, p2i, col, thickness, cv2.LINE_AA)
 
     roll, pitch, yaw = rpy_from_R_zyx(R)
     ss1 = f"t = [{t[0]:.4f}, {t[1]:.4f}, {t[2]:.4f}]"
@@ -217,13 +199,12 @@ def draw_pose6d_on_image(img_bgr, T_obj_in_cam, K, axis_len=0.05, thickness=2, t
     cv2.putText(img_bgr, ss2, (x0, y0 + 22), cv2.FONT_HERSHEY_PLAIN, 1.5, (0, 255, 255), 1, cv2.LINE_AA)
 
 
-# =========================
-# SAM2 Image predictor (bbox prompt)
-# =========================
+# -------------------------
+# SAM2 bbox prompt wrapper
+# -------------------------
 class SamSegmenter:
-    """
-    bbox prompt (x0,y0,x1,y1) -> mask01
-    """
+    """bbox prompt -> mask01"""
+
     def __init__(self, checkpoint, model_cfg, device="cuda", use_amp=True):
         self.device = device
         self.use_amp = use_amp
@@ -242,207 +223,44 @@ class SamSegmenter:
         model = build_sam2(model_cfg, checkpoint, device=self.device)
         model.eval()
         self.predictor = SAM2ImagePredictor(model)
-        print(f"[SAM2] Loaded ImagePredictor. device={self.device}, ckpt={checkpoint}, cfg={model_cfg}")
+        print(f"[SAM2] Loaded. device={self.device}")
 
     def segment_from_box(self, bgr, box_xyxy):
-        """
-        bgr: HxWx3 uint8
-        box_xyxy: [x0,y0,x1,y1]
-        return mask01 uint8 HxW
-        """
         import torch
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        box = np.array(box_xyxy, dtype=np.float32)[None, :]
 
         with torch.inference_mode():
             if (self.device == "cuda") and self.use_amp:
                 with torch.cuda.amp.autocast(dtype=torch.float16):
                     self.predictor.set_image(rgb)
-                    box = np.array(box_xyxy, dtype=np.float32)
-                    masks, scores, _ = self.predictor.predict(
-                        box=box[None, :],
-                        multimask_output=False
-                    )
+                    masks, _, _ = self.predictor.predict(box=box, multimask_output=False)
             else:
                 self.predictor.set_image(rgb)
-                box = np.array(box_xyxy, dtype=np.float32)
-                masks, scores, _ = self.predictor.predict(
-                    box=box[None, :],
-                    multimask_output=False
-                )
+                masks, _, _ = self.predictor.predict(box=box, multimask_output=False)
 
-        m = masks[0].astype(np.uint8)
-        return m
+        return masks[0].astype(np.uint8)
 
 
-# =========================
-# Azure Kinect DK (pyk4a)
-# =========================
-def start_azure_kinect(color_res="720P", fps=30, depth_mode="NFOV_UNBINNED"):
-    """
-    return: k4a, K_color(3x3), (color_w, color_h)
-    """
-    import pyk4a
-    from pyk4a import PyK4A, Config, CalibrationType
-
-    # --- enums ---
-    # pyk4a.ColorResolution.RES_720P ... :contentReference[oaicite:4]{index=4}
-    if color_res == "720P":
-        cr = pyk4a.ColorResolution.RES_720P
-    elif color_res == "1080P":
-        cr = pyk4a.ColorResolution.RES_1080P
-    elif color_res == "1536P":
-        cr = pyk4a.ColorResolution.RES_1536P
-    elif color_res == "2160P":
-        cr = pyk4a.ColorResolution.RES_2160P
-    else:
-        raise ValueError(f"Unsupported color_res={color_res}")
-
-    if depth_mode == "NFOV_UNBINNED":
-        dm = pyk4a.DepthMode.NFOV_UNBINNED
-    elif depth_mode == "NFOV_2X2BINNED":
-        dm = pyk4a.DepthMode.NFOV_2X2BINNED
-    elif depth_mode == "WFOV_UNBINNED":
-        dm = pyk4a.DepthMode.WFOV_UNBINNED
-    elif depth_mode == "WFOV_2X2BINNED":
-        dm = pyk4a.DepthMode.WFOV_2X2BINNED
-    else:
-        raise ValueError(f"Unsupported depth_mode={depth_mode}")
-
-    if fps == 30:
-        cfps = pyk4a.FPS.FPS_30
-    elif fps == 15:
-        cfps = pyk4a.FPS.FPS_15
-    elif fps == 5:
-        cfps = pyk4a.FPS.FPS_5
-    else:
-        raise ValueError(f"Unsupported fps={fps}")
-
-    # 建议用 BGRA32，省掉解码麻烦（pyk4a 示例里也这么用） :contentReference[oaicite:5]{index=5}
-    k4a = PyK4A(
-        Config(
-            color_resolution=cr,
-            depth_mode=dm,
-            camera_fps=cfps,
-            color_format=pyk4a.ImageFormat.COLOR_BGRA32,
-            synchronized_images_only=True,
-        )
-    )
-    k4a.start()
-
-    # 取 color 内参 3x3（像素单位） :contentReference[oaicite:6]{index=6}
-    K_color = k4a.calibration.get_camera_matrix(CalibrationType.COLOR).astype(np.float32)
-
-    # 拿一帧确认分辨率 & warmup（有时前几帧 color 可能为空）
-    color_w = color_h = None
-    for _ in range(5):
-        cap = k4a.get_capture()
-        if cap.color is not None and np.any(cap.color):
-            color_h, color_w = cap.color.shape[:2]
-            break
-        time.sleep(0.02)
-
-    if color_w is None:
-        # fallback：从 K 推不出分辨率，只能再等
-        cap = k4a.get_capture()
-        if cap.color is None:
-            raise RuntimeError("Azure Kinect: cannot get color frame. Check device & permissions.")
-        color_h, color_w = cap.color.shape[:2]
-
-    print(f"[K4A] Started Azure Kinect DK: color={color_w}x{color_h}@{fps}, depth_mode={depth_mode}")
-    print(f"[K4A] K_color: fx={K_color[0,0]:.2f}, fy={K_color[1,1]:.2f}, cx={K_color[0,2]:.2f}, cy={K_color[1,2]:.2f}")
-
-    return k4a, K_color, (color_w, color_h)
-
-
-def get_k4a_frame(k4a, out_size=None, require_aligned_depth=True):
-    """
-    return color_bgr(uint8 HxWx3), depth_mm(uint16 HxW)
-    out_size: (W,H) optional, will resize both color and depth.
-    require_aligned_depth: True 时优先要求 depth 已对齐到 color（transformed_depth）
-    """
-    cap = k4a.get_capture()
-    if cap is None:
-        return None, None
-
-    color = cap.color  # usually BGRA :contentReference[oaicite:7]{index=7}
-    if color is None or (not np.any(color)):
-        return None, None
-
-    # BGRA -> BGR
-    if color.ndim == 3 and color.shape[2] == 4:
-        color_bgr = cv2.cvtColor(color, cv2.COLOR_BGRA2BGR)
-    else:
-        # uncommon cases
-        color_bgr = color.copy()
-
-    # Depth in mm (uint16). Use transformed_depth to align depth->color if available. :contentReference[oaicite:8]{index=8}
-    depth_aligned = None
-    if hasattr(cap, "transformed_depth"):
-        try:
-            depth_aligned = cap.transformed_depth
-        except Exception:
-            depth_aligned = None
-
-    if depth_aligned is not None and np.any(depth_aligned):
-        depth_mm = depth_aligned.astype(np.uint16)
-    else:
-        depth_mm = cap.depth
-        if depth_mm is None:
-            return None, None
-        depth_mm = depth_mm.astype(np.uint16)
-
-        if require_aligned_depth:
-            # 这里直接给强提醒：你现在的 pipeline 需要 depth 对齐到 color
-            print("[WARN] cap.transformed_depth not available; depth may NOT be aligned to color.")
-            print("       Your mask->depth logic assumes alignment. Consider enabling transformed_depth / transformation.")
-
-    # optional resize (keep your old 640x480 behavior if you want)
-    if out_size is not None:
-        out_w, out_h = int(out_size[0]), int(out_size[1])
-        if color_bgr.shape[1] != out_w or color_bgr.shape[0] != out_h:
-            color_bgr = cv2.resize(color_bgr, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
-            depth_mm = cv2.resize(depth_mm, (out_w, out_h), interpolation=cv2.INTER_NEAREST)
-
-    return color_bgr, depth_mm
-
-
-def scale_K_for_resize(K, src_wh, dst_wh):
-    """If you resize image from src_wh(W,H) to dst_wh(W,H), scale K accordingly."""
-    src_w, src_h = float(src_wh[0]), float(src_wh[1])
-    dst_w, dst_h = float(dst_wh[0]), float(dst_wh[1])
-    sx = dst_w / src_w
-    sy = dst_h / src_h
-    K2 = K.copy().astype(np.float32)
-    K2[0, 0] *= sx
-    K2[1, 1] *= sy
-    K2[0, 2] *= sx
-    K2[1, 2] *= sy
-    return K2
-
-
-# =========================
+# -------------------------
 # Main
-# =========================
-if __name__ == "__main__":
-    # ---------- configs ----------
+# -------------------------
+def main():
     addr = "tcp://127.0.0.1:5550"
 
     checkpoint = "../sam2.1_hiera_tiny.pt"
-    model_cfg  = "configs/sam2.1/sam2.1_hiera_t.yaml"
-
-    device = "cuda"   # "cuda" or "cpu"
+    model_cfg = "configs/sam2.1/sam2.1_hiera_t.yaml"
+    device = "cuda"
     use_amp = True
 
     axis_len = 0.05
 
-    # Azure Kinect config
-    k4a_color_res = "720P"          # 720P/1080P/1536P/2160P
-    k4a_depth_mode = "NFOV_UNBINNED"  # NFOV_UNBINNED/WFOV_UNBINNED/...
+    # Azure Kinect
+    k4a_color_res = "720P"
+    k4a_depth_mode = "NFOV_UNBINNED"
     k4a_fps = 30
 
-
-    # ---------- init ----------
     sock = make_client(addr=addr, timeout_ms=10000)
     print(f"[ZMQ] connected: {addr}")
 
@@ -450,15 +268,9 @@ if __name__ == "__main__":
 
     camera = AzureKinectDK(color_res=k4a_color_res, fps=k4a_fps, depth_mode=k4a_depth_mode)
     camera.start_init()
-    # k4a, K_native, native_wh = start_azure_kinect(color_res=k4a_color_res, fps=k4a_fps, depth_mode=k4a_depth_mode)
-    # if out_size is not None:
-    #     K = scale_K_for_resize(K_native, src_wh=native_wh, dst_wh=out_size)
-    #     print(f"[K4A] Resize enabled: {native_wh[0]}x{native_wh[1]} -> {out_size[0]}x{out_size[1]}")
-    # else:
-    #     K = K_native
-    K = camera.K_color
+    K = camera.K_color.astype(np.float32)
 
-    win = "Azure Kinect DK + SAM2 bbox prompt (s:init ROI | r:reset | q:quit)"
+    win = "Azure Kinect DK + SAM2 (s:init ROI | r:reset | q:quit)"
     cv2.namedWindow(win, cv2.WINDOW_NORMAL)
 
     init_done = False
@@ -472,9 +284,8 @@ if __name__ == "__main__":
 
     try:
         while True:
-            # color, depth_mm = get_k4a_frame(k4a, out_size=out_size, require_aligned_depth=True)
             color, depth_mm = camera.get_k4a_frame(require_aligned_depth=True)
-            if color is None:
+            if color is None or depth_mm is None:
                 continue
 
             fx, fy, cx, cy = float(K[0, 0]), float(K[1, 1]), float(K[0, 2]), float(K[1, 2])
@@ -498,7 +309,7 @@ if __name__ == "__main__":
                 break
 
             if key == ord('r'):
-                print("[RESET] wait for next 's' to initialize.")
+                print("[RESET] Press 's' to re-init.")
                 init_done = False
                 i = 0
                 prev_mask01 = None
@@ -506,7 +317,7 @@ if __name__ == "__main__":
                 last_T = None
                 continue
 
-            # ---------- init: press s, select ROI once ----------
+            # -------- init with ROI (press s once) --------
             if (key == ord('s')) and (not init_done):
                 print("[INIT] Select ROI (ENTER/SPACE confirm, ESC cancel)...")
                 x, y, w, h = cv2.selectROI("Select bbox prompt ROI", color, fromCenter=False, showCrosshair=True)
@@ -515,119 +326,112 @@ if __name__ == "__main__":
                     print("[INIT] ROI canceled / too small.")
                     continue
 
-                x0, y0, x1, y1 = int(x), int(y), int(x + w - 1), int(y + h - 1)
-                box_xyxy = [x0, y0, x1, y1]
+                box_xyxy = [int(x), int(y), int(x + w - 1), int(y + h - 1)]
 
-                # 1) SAM bbox prompt on init frame
-                t0 = time.time()
                 try:
+                    t0 = time.time()
                     mask01 = segmenter.segment_from_box(color, box_xyxy)
+                    infer_ms = (time.time() - t0) * 1000.0
                 except RuntimeError as e:
                     print(f"[INIT] SAM failed: {e}")
-                    print("If CUDA OOM: set device='cpu' or close other GPU programs.")
                     continue
 
-                dt = (time.time() - t0) * 1000.0
                 if mask01 is None or mask01.sum() == 0:
-                    print("[INIT] SAM returned empty mask. Try again.")
+                    print("[INIT] Empty mask. Try again.")
                     continue
-                print(f"[INIT] SAM ok. infer={dt:.1f}ms, mask_pixels={int(mask01.sum())}")
 
-                # 2) compute center3D -> ob_in_cam init
+                print(f"[INIT] SAM ok. infer={infer_ms:.1f}ms, mask_pixels={int(mask01.sum())}")
+
                 center3d = compute_center3d_from_mask_depth_mm(mask01, depth_mm, fx, fy, cx, cy)
-                if center3d is None:
-                    print("[INIT] Cannot compute center3D; send init without ob_in_cam.")
-                    has_init = False
-                    ob_in_cam = None
-                else:
-                    has_init = True
-                    ob_in_cam = make_ob_in_cam_from_center(center3d)
+                has_init = (center3d is not None)
+                ob_in_cam = make_ob_in_cam_from_center(center3d) if has_init else None
+                if has_init:
                     print(f"[INIT] center3D(m): X={center3d[0]:.4f}, Y={center3d[1]:.4f}, Z={center3d[2]:.4f}")
+                else:
+                    print("[INIT] center3D failed; send init without ob_in_cam.")
 
-                # 3) send first frame
                 id_str = f"{i:06d}"
                 t_send0 = time.time()
                 T, resp = send_frame_with_sock(
                     sock,
                     color_bgr=color,
-                    depth=depth_mm,
+                    depth_mm=depth_mm,
                     mask=mask01,
-                    depth_type="uint16",
                     id_str=id_str,
                     roi=None,
                     has_init=has_init,
-                    ob_in_cam=ob_in_cam
+                    ob_in_cam=ob_in_cam,
                 )
                 print(f"[SEND][INIT] i={i} ok={resp.get('ok')} cost={time.time()-t_send0:.3f}s")
 
-                # update state
                 init_done = True
                 prev_mask01 = mask01
+
                 bb = bbox_from_mask(mask01, pad=5)
-                if bb is not None:
-                    prev_box_xyxy = [bb[0], bb[2], bb[1], bb[3]]
-                else:
-                    prev_box_xyxy = box_xyxy
+                prev_box_xyxy = [bb[0], bb[2], bb[1], bb[3]] if bb is not None else box_xyxy
 
                 last_T = T
                 i += 1
                 continue
 
-            # ---------- after init: each frame bbox prompt from previous mask bbox ----------
+            # -------- tracking phase --------
             if init_done:
-                if prev_box_xyxy is None:
-                    box_xyxy = [0, 0, color.shape[1] - 1, color.shape[0] - 1]
-                else:
-                    box_xyxy = prev_box_xyxy
+                box_xyxy = prev_box_xyxy if prev_box_xyxy is not None else [0, 0, color.shape[1] - 1, color.shape[0] - 1]
 
-                # segment
-                t0 = time.time()
                 try:
+                    t0 = time.time()
                     mask01 = segmenter.segment_from_box(color, box_xyxy)
+                    infer_ms = (time.time() - t0) * 1000.0
                 except RuntimeError as e:
                     print(f"[WARN] SAM failed at i={i}: {e}")
                     mask01 = prev_mask01
-
-                infer_ms = (time.time() - t0) * 1000.0
+                    infer_ms = -1.0
 
                 if mask01 is None or mask01.sum() == 0:
                     mask01 = prev_mask01
 
-                # update bbox for next frame
                 if mask01 is not None:
                     bb = bbox_from_mask(mask01, pad=5)
                     if bb is not None:
                         prev_box_xyxy = [bb[0], bb[2], bb[1], bb[3]]
                     prev_mask01 = mask01
 
-                # send
                 id_str = f"{i:06d}"
                 t_send0 = time.time()
                 T, resp = send_frame_with_sock(
                     sock,
                     color_bgr=color,
-                    depth=depth_mm,
+                    depth_mm=depth_mm,
                     mask=mask01,
-                    depth_type="uint16",
                     id_str=id_str,
                     roi=None,
                     has_init=False,
-                    ob_in_cam=None
+                    ob_in_cam=None,
                 )
                 cost = time.time() - t_send0
-
                 last_T = T
+
                 print(f"[SEND] i={i:06d} ok={resp.get('ok')} infer_ms={infer_ms:.1f} send_cost={cost:.3f}s")
                 i += 1
 
     finally:
-        try:
-            k4a.stop()
-        except Exception:
-            pass
         cv2.destroyAllWindows()
         try:
             sock.close()
         except Exception:
             pass
+
+        # 尝试关闭相机（按你 AzureKinectDK 的实现可能叫 stop/close）
+        for fn in ["stop", "close", "shutdown"]:
+            if hasattr(camera, fn):
+                try:
+                    getattr(camera, fn)()
+                    break
+                except Exception:
+                    pass
+
         print("[EXIT] Done.")
+
+
+if __name__ == "__main__":
+    main()
