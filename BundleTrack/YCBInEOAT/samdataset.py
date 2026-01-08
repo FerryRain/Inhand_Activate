@@ -261,13 +261,13 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--img_dir",
-                    default="/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/rgb",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/rgb",
                     help="RGB frames dir")
     ap.add_argument("--out_dir",
-                    default="/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/masks",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/masks",
                     help="Output masks dir (0/1)")
     ap.add_argument("--out_viz_dir",
-                    default="/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/masks_viz",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/masks_viz",
                     help="Output masks_viz dir (0/255)")
 
     ap.add_argument("--checkpoint", default="./sam2.1_hiera_tiny.pt", help="SAM2 checkpoint")
@@ -288,19 +288,19 @@ def main():
     ap.add_argument("--save_pose", action="store_true",
                     help="Save pose txt for prompt_frame into annotated_poses/xxxx.txt")
     ap.add_argument("--pose_out_dir",
-                    default="/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/annotated_poses",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/annotated_poses",
                     help="Default: sibling of img_dir -> ../annotated_poses")
     ap.add_argument("--pose_txt", default=None,
                     help="If provided, directly write this 4x4 pose to prompt frame (mode B).")
 
     # for center+standard axes pose (mode A)
     ap.add_argument("--depth_dir",
-                    default="/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/depth",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/depth",
                     help="Depth dir (needed for center+standard pose)")
     ap.add_argument("--intrinsics_json",
-                    default="/home/ferry/data/Code2/Research/PoseEstimation/BundleTrack/YCBInEOAT/inhand_object2/intrinsics.json",
+                    default=None,
                     help="intrinsics.json with fx/fy/ppx/ppy")
-    ap.add_argument("--camK_txt", default=None, help="cam_K.txt (3x3)")
+    ap.add_argument("--camK_txt", default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/cam_K.txt", help="cam_K.txt (3x3)")
     ap.add_argument("--depth_scale", type=float, default=0.001,
                     help="Scale for integer depth to meters. Default 0.001 (mm->m).")
 

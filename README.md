@@ -44,6 +44,10 @@ bash docker/run_container.sh
 cd [PATH_TO_BUNDLETRACK]
 ```
 
+```bash
+docker exec -it  bundletrack bash
+```
+
 Then follow either **Offline** or **Online** mode below.
 
 ---

@@ -7,6 +7,7 @@ import argparse
 import numpy as np
 import cv2
 import open3d as o3d
+from collections import deque
 
 
 # ---------------- IO helpers ----------------
@@ -78,10 +79,51 @@ def erode_mask(mask_u8_255: np.ndarray, k: int, iters: int) -> np.ndarray:
     return cv2.erode(mask_u8_255, kernel, iterations=iters)
 
 
+def clean_mask(mask_u8_255: np.ndarray,
+               open_k: int,
+               close_k: int,
+               min_area: int,
+               keep_largest: bool) -> np.ndarray:
+    """
+    mask 去噪：形态学开/闭 + 去除小连通域（可选仅保留最大连通域）
+    """
+    m = (mask_u8_255 > 0).astype(np.uint8)
+
+    if open_k > 1:
+        ker = np.ones((open_k, open_k), np.uint8)
+        m = cv2.morphologyEx(m, cv2.MORPH_OPEN, ker, iterations=1)
+
+    if close_k > 1:
+        ker = np.ones((close_k, close_k), np.uint8)
+        m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, ker, iterations=1)
+
+    if min_area > 0 or keep_largest:
+        num, labels, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
+        if num <= 1:
+            return (m * 255).astype(np.uint8)
+
+        areas = stats[1:, cv2.CC_STAT_AREA]  # exclude background
+        keep = np.zeros(num, dtype=bool)
+        keep[0] = False
+
+        if keep_largest:
+            largest_id = 1 + int(np.argmax(areas))
+            keep[largest_id] = True
+        else:
+            # keep those with area >= min_area
+            for cid in range(1, num):
+                if stats[cid, cv2.CC_STAT_AREA] >= int(min_area):
+                    keep[cid] = True
+
+        m2 = keep[labels].astype(np.uint8)
+        return (m2 * 255).astype(np.uint8)
+
+    return (m * 255).astype(np.uint8)
+
+
 def depth_range_filter(depth: np.ndarray, depth_scale: float, zmin_m: float, zmax_m: float) -> np.ndarray:
     """
-    Keep depth only in [zmin_m, zmax_m] (in meters after scaling).
-    depth_scale: same as Open3D create_from_color_and_depth (e.g., 1000 for mm uint16)
+    Keep depth only in [zmin_m, zmax_m] (meters after scaling).
     """
     if zmin_m <= 0 and zmax_m <= 0:
         return depth  # disabled
@@ -89,20 +131,61 @@ def depth_range_filter(depth: np.ndarray, depth_scale: float, zmin_m: float, zma
     out = depth.copy()
 
     if depth.dtype == np.uint16:
-        # raw units are (meters * depth_scale) -> for mm depth_scale=1000
         zmin_raw = int(max(0, zmin_m * depth_scale)) if zmin_m > 0 else 0
         zmax_raw = int(zmax_m * depth_scale) if zmax_m > 0 else np.iinfo(np.uint16).max
         invalid = (out < zmin_raw) | (out > zmax_raw)
         out[invalid] = 0
         return out
     else:
-        # float depth stores meters directly if depth_scale=1, otherwise Open3D will divide by scale
-        # Here we assume float depth is meters (common). If yours is different, tell me.
         zmin = zmin_m if zmin_m > 0 else -np.inf
         zmax = zmax_m if zmax_m > 0 else np.inf
         invalid = (out < zmin) | (out > zmax)
         out[invalid] = 0.0
         return out
+
+
+def denoise_depth(depth: np.ndarray,
+                  depth_scale: float,
+                  median_k: int,
+                  bilateral_d: int,
+                  bilateral_sigma_m: float,
+                  bilateral_sigma_space: float) -> np.ndarray:
+    """
+    depth 去噪：
+    - medianBlur: 去掉椒盐/飞点
+    - bilateralFilter: 边缘保持平滑（对 uint16 先转 meters(float)）
+    bilateral_sigma_m: 以“米”为单位的深度 sigma（更直观）
+    """
+    out = depth.copy()
+
+    if median_k and median_k > 1:
+        # OpenCV medianBlur supports 8U/16U/32F
+        out = cv2.medianBlur(out, int(median_k))
+
+    if bilateral_d and bilateral_d > 0 and bilateral_sigma_m and bilateral_sigma_m > 0:
+        # bilateralFilter supports 8U/32F; so convert to float meters
+        if out.dtype == np.uint16:
+            d_m = out.astype(np.float32) / float(depth_scale)
+            valid = d_m > 0
+            d_m_f = cv2.bilateralFilter(
+                d_m, d=int(bilateral_d),
+                sigmaColor=float(bilateral_sigma_m),
+                sigmaSpace=float(bilateral_sigma_space)
+            )
+            d_m_f[~valid] = 0.0
+            out = np.clip(d_m_f * float(depth_scale), 0, 65535).astype(np.uint16)
+        else:
+            d_m = out.astype(np.float32)
+            valid = d_m > 0
+            d_m_f = cv2.bilateralFilter(
+                d_m, d=int(bilateral_d),
+                sigmaColor=float(bilateral_sigma_m),
+                sigmaSpace=float(bilateral_sigma_space)
+            )
+            d_m_f[~valid] = 0.0
+            out = d_m_f.astype(out.dtype)
+
+    return out
 
 
 # ---------------- Point cloud helpers ----------------
@@ -162,6 +245,16 @@ def copy_pcd(pcd: o3d.geometry.PointCloud) -> o3d.geometry.PointCloud:
     return o3d.geometry.PointCloud(pcd)
 
 
+def safe_remove_non_finite(pcd: o3d.geometry.PointCloud) -> o3d.geometry.PointCloud:
+    if pcd.is_empty():
+        return pcd
+    ret = pcd.remove_non_finite_points()
+    # open3d 不同版本：可能返回 (pcd, ind) 或 None(原地修改)
+    if isinstance(ret, tuple) and len(ret) >= 1:
+        return ret[0]
+    return pcd
+
+
 def denoise_pcd(pcd: o3d.geometry.PointCloud,
                 sor_nb: int,
                 sor_std: float,
@@ -170,11 +263,11 @@ def denoise_pcd(pcd: o3d.geometry.PointCloud,
     if pcd.is_empty():
         return pcd
     out = pcd
-    if sor_nb > 0:
+    if sor_nb and sor_nb > 0:
         _, ind = out.remove_statistical_outlier(nb_neighbors=int(sor_nb),
                                                 std_ratio=float(sor_std))
         out = out.select_by_index(ind)
-    if ror_radius > 0:
+    if ror_radius and ror_radius > 0:
         _, ind = out.remove_radius_outlier(nb_points=int(ror_min_points),
                                            radius=float(ror_radius))
         out = out.select_by_index(ind)
@@ -182,46 +275,130 @@ def denoise_pcd(pcd: o3d.geometry.PointCloud,
 
 
 def keep_largest_cluster_dbscan(pcd: o3d.geometry.PointCloud, eps: float, min_points: int) -> o3d.geometry.PointCloud:
-    """
-    Use DBSCAN to keep the largest cluster; remove scattered fragments.
-    eps: in meters (object frame)
-    """
     if pcd.is_empty():
         return pcd
-
     labels = np.array(pcd.cluster_dbscan(eps=float(eps), min_points=int(min_points), print_progress=False))
     if labels.size == 0:
         return pcd
-
     valid = labels[labels >= 0]
     if valid.size == 0:
-        # all are noise
         return pcd
-
-    # largest cluster id
     counts = np.bincount(valid)
     largest = int(np.argmax(counts))
-
     ind = np.where(labels == largest)[0]
     return pcd.select_by_index(ind)
+
+
+# ---------------- Pose smoothing (optional) ----------------
+def rotmat_to_quat_wxyz(R: np.ndarray) -> np.ndarray:
+    """Return quaternion [w,x,y,z] from 3x3 rotation matrix."""
+    R = R.astype(np.float64)
+    t = np.trace(R)
+    if t > 0:
+        s = np.sqrt(t + 1.0) * 2.0
+        w = 0.25 * s
+        x = (R[2, 1] - R[1, 2]) / s
+        y = (R[0, 2] - R[2, 0]) / s
+        z = (R[1, 0] - R[0, 1]) / s
+    else:
+        if (R[0, 0] > R[1, 1]) and (R[0, 0] > R[2, 2]):
+            s = np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2]) * 2.0
+            w = (R[2, 1] - R[1, 2]) / s
+            x = 0.25 * s
+            y = (R[0, 1] + R[1, 0]) / s
+            z = (R[0, 2] + R[2, 0]) / s
+        elif R[1, 1] > R[2, 2]:
+            s = np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2]) * 2.0
+            w = (R[0, 2] - R[2, 0]) / s
+            x = (R[0, 1] + R[1, 0]) / s
+            y = 0.25 * s
+            z = (R[1, 2] + R[2, 1]) / s
+        else:
+            s = np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1]) * 2.0
+            w = (R[1, 0] - R[0, 1]) / s
+            x = (R[0, 2] + R[2, 0]) / s
+            y = (R[1, 2] + R[2, 1]) / s
+            z = 0.25 * s
+    q = np.array([w, x, y, z], dtype=np.float64)
+    q /= (np.linalg.norm(q) + 1e-12)
+    return q
+
+
+def quat_wxyz_to_rotmat(q: np.ndarray) -> np.ndarray:
+    w, x, y, z = q.astype(np.float64)
+    ww, xx, yy, zz = w*w, x*x, y*y, z*z
+    wx, wy, wz = w*x, w*y, w*z
+    xy, xz, yz = x*y, x*z, y*z
+    R = np.array([
+        [ww + xx - yy - zz, 2*(xy - wz),       2*(xz + wy)],
+        [2*(xy + wz),       ww - xx + yy - zz, 2*(yz - wx)],
+        [2*(xz - wy),       2*(yz + wx),       ww - xx - yy + zz],
+    ], dtype=np.float64)
+    return R
+
+
+def average_quaternions_wxyz(quats: np.ndarray) -> np.ndarray:
+    """
+    Quaternion average via eigenvector of sum(q q^T).
+    quats: (N,4) [w,x,y,z]
+    """
+    if len(quats) == 1:
+        return quats[0]
+    # hemisphere align
+    ref = quats[0]
+    qs = quats.copy()
+    for i in range(len(qs)):
+        if np.dot(qs[i], ref) < 0:
+            qs[i] = -qs[i]
+    A = np.zeros((4, 4), dtype=np.float64)
+    for q in qs:
+        A += np.outer(q, q)
+    A /= float(len(qs))
+    eigvals, eigvecs = np.linalg.eigh(A)
+    q_avg = eigvecs[:, np.argmax(eigvals)]
+    if q_avg[0] < 0:  # keep w positive (optional)
+        q_avg = -q_avg
+    q_avg /= (np.linalg.norm(q_avg) + 1e-12)
+    return q_avg
+
+
+class PoseSmoother:
+    def __init__(self, window: int):
+        self.window = int(window)
+        self.buf_R = deque(maxlen=self.window)
+        self.buf_t = deque(maxlen=self.window)
+
+    def push_and_get(self, T_ob_in_cam: np.ndarray) -> np.ndarray:
+        if self.window <= 1:
+            return T_ob_in_cam
+        R = T_ob_in_cam[:3, :3]
+        t = T_ob_in_cam[:3, 3]
+        self.buf_R.append(R)
+        self.buf_t.append(t)
+
+        # translation mean
+        t_avg = np.mean(np.stack(self.buf_t, axis=0), axis=0)
+
+        # rotation average
+        quats = np.stack([rotmat_to_quat_wxyz(r) for r in self.buf_R], axis=0)
+        q_avg = average_quaternions_wxyz(quats)
+        R_avg = quat_wxyz_to_rotmat(q_avg)
+
+        T = np.eye(4, dtype=np.float64)
+        T[:3, :3] = R_avg
+        T[:3, 3] = t_avg
+        return T
 
 
 # ---------------- Main ----------------
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/Real_time_vis",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/inhand_y",
                     help="BundleTrack debug_dir")
     ap.add_argument("--K_path", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/cam_K.txt",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/cam_K_A.txt",
                     help="3x3 intrinsic matrix txt")
-
-    # ap.add_argument("--debug_dir", type=str,
-    #                 default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/YCBInEOAT/mustard0",
-    #                 help="BundleTrack debug_dir")
-    # ap.add_argument("--K_path", type=str,
-    #             default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/YCBInEOAT/mustard0/keyframes/cam_K.txt",
-    #             help="3x3 intrinsic matrix txt")
 
     ap.add_argument("--stride", type=int, default=1)
     ap.add_argument("--voxel", type=float, default=0.002)
@@ -229,29 +406,48 @@ def main():
                     help="1000 for mm(uint16 png), 1 for meters(float exr). If <0, auto guess.")
     ap.add_argument("--depth_trunc", type=float, default=2.0)
 
-    # mask cleanup (helpful when mask boundary is noisy)
+    # mask cleanup
     ap.add_argument("--mask_erode_k", type=int, default=3, help="erode mask kernel size (<=1 disables)")
     ap.add_argument("--mask_erode_iter", type=int, default=1, help="erode iterations")
+    ap.add_argument("--mask_open_k", type=int, default=0, help="mask MORPH_OPEN kernel (0 disables)")
+    ap.add_argument("--mask_close_k", type=int, default=0, help="mask MORPH_CLOSE kernel (0 disables)")
+    ap.add_argument("--mask_min_area", type=int, default=0, help="remove mask components with area < this (0 disables)")
+    ap.add_argument("--mask_keep_largest", action="store_true", help="only keep largest connected component in mask")
 
     # depth range filter (meters after scaling)
     ap.add_argument("--zmin", type=float, default=0.0, help="min depth in meters (0 disables)")
     ap.add_argument("--zmax", type=float, default=0.0, help="max depth in meters (0 disables)")
 
+    # depth denoise
+    ap.add_argument("--depth_median_k", type=int, default=5, help="medianBlur kernel for depth (0 disables, odd number)")
+    ap.add_argument("--depth_bilateral_d", type=int, default=5, help="bilateralFilter d (0 disables)")
+    ap.add_argument("--depth_bilateral_sigma_m", type=float, default=0.0, help="bilateral sigmaColor in meters (e.g., 0.01)")
+    ap.add_argument("--depth_bilateral_sigma_space", type=float, default=5.0, help="bilateral sigmaSpace in pixels")
+
+    # per-frame pointcloud denoise (recommended if you have flying depth points)
+    ap.add_argument("--frame_sor_nb", type=int, default=0, help="per-frame SOR nb_neighbors (0 disables)")
+    ap.add_argument("--frame_sor_std", type=float, default=2.0, help="per-frame SOR std_ratio")
+    ap.add_argument("--frame_ror_radius", type=float, default=-1.0, help="per-frame ROR radius; <0 auto=2*voxel, 0 disables")
+    ap.add_argument("--frame_ror_min_points", type=int, default=8)
+
     # final denoise
     ap.add_argument("--sor_nb", type=int, default=30)
     ap.add_argument("--sor_std", type=float, default=2.0)
     ap.add_argument("--ror_radius", type=float, default=-1.0, help="<=0 disables; <0 auto=3*voxel")
-    ap.add_argument("--ror_min_points", type=int, default=8)
+    ap.add_argument("--ror_min_points", type=int, default=10)
 
-    # keep largest cluster (recommended)
+    # keep largest cluster
     ap.add_argument("--keep_largest_cluster", action="store_true", default=True)
     ap.add_argument("--dbscan_eps", type=float, default=-1.0, help="<0 auto=5*voxel")
-    ap.add_argument("--dbscan_min_points", type=int, default=30)
+    ap.add_argument("--dbscan_min_points", type=int, default=5)
+
+    # pose smoothing (helps pose jitter smear)
+    ap.add_argument("--pose_smooth_window", type=int, default=0, help=">1 enables causal smoothing over last N poses")
 
     ap.add_argument("--show_obj_frames", action="store_true")
     ap.add_argument("--obj_frame_every", type=int, default=30)
 
-    ap.add_argument("--save_ply_obj", type=str, default="")
+    ap.add_argument("--save_ply_obj", type=str, default="./reconstruction_3s.ply")
     ap.add_argument("--save_ply_cam", type=str, default="")
     ap.add_argument("--save_traj_npy", type=str, default="")
 
@@ -287,6 +483,7 @@ def main():
     obj_frames = []
 
     guessed_depth_scale = None
+    pose_smoother = PoseSmoother(args.pose_smooth_window) if args.pose_smooth_window and args.pose_smooth_window > 1 else None
 
     for i, fid in enumerate(fids):
         rgb_path = find_first_existing([
@@ -308,6 +505,9 @@ def main():
             continue
 
         T_ob_in_cam = load_T_txt(pose_path)
+        if pose_smoother is not None:
+            T_ob_in_cam = pose_smoother.push_and_get(T_ob_in_cam)
+
         T_cam_in_ob = np.linalg.inv(T_ob_in_cam)
 
         traj.append(T_ob_in_cam[:3, 3].copy())
@@ -324,17 +524,39 @@ def main():
         else:
             depth_scale = args.depth_scale
 
-        # preprocess: mask erosion + depth range filter
+        # preprocess: mask erosion + mask cleanup
         mask = erode_mask(mask, args.mask_erode_k, args.mask_erode_iter)
+        if (args.mask_open_k and args.mask_open_k > 1) or (args.mask_close_k and args.mask_close_k > 1) or args.mask_min_area > 0 or args.mask_keep_largest:
+            mask = clean_mask(mask,
+                              open_k=args.mask_open_k,
+                              close_k=args.mask_close_k,
+                              min_area=args.mask_min_area,
+                              keep_largest=args.mask_keep_largest)
+
+        # preprocess: depth range + depth denoise
         depth = depth_range_filter(depth, depth_scale=depth_scale, zmin_m=args.zmin, zmax_m=args.zmax)
+        if (args.depth_median_k and args.depth_median_k > 1) or (args.depth_bilateral_d and args.depth_bilateral_d > 0):
+            depth = denoise_depth(depth,
+                                  depth_scale=depth_scale,
+                                  median_k=args.depth_median_k,
+                                  bilateral_d=args.depth_bilateral_d,
+                                  bilateral_sigma_m=args.depth_bilateral_sigma_m,
+                                  bilateral_sigma_space=args.depth_bilateral_sigma_space)
 
         rgbd = make_masked_rgbd(rgb, depth, mask, depth_scale=depth_scale, depth_trunc=args.depth_trunc)
 
         pcd_cam = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
-        pcd_cam.remove_non_finite_points()
+        pcd_cam = safe_remove_non_finite(pcd_cam)
 
         if args.voxel > 0:
             pcd_cam = pcd_cam.voxel_down_sample(args.voxel)
+
+        # per-frame pointcloud denoise (before fusion)
+        frame_ror_radius = args.frame_ror_radius
+        if frame_ror_radius < 0:
+            frame_ror_radius = 2.0 * args.voxel if args.voxel > 0 else 0.01
+        if args.frame_sor_nb and args.frame_sor_nb > 0 or (frame_ror_radius and frame_ror_radius > 0):
+            pcd_cam = denoise_pcd(pcd_cam, args.frame_sor_nb, args.frame_sor_std, frame_ror_radius, args.frame_ror_min_points)
 
         accum_cam += pcd_cam
 
@@ -368,7 +590,7 @@ def main():
     after = len(fused_obj.points)
     print(f"[final denoise] points: {before} -> {after} (removed {before-after})")
 
-    # keep largest cluster (THIS removes those scattered fragments)
+    # keep largest cluster
     if args.keep_largest_cluster:
         eps = args.dbscan_eps
         if eps < 0:
@@ -385,25 +607,11 @@ def main():
         np.save(args.save_traj_npy, traj_np)
         print(f"[saved] trajectory -> {args.save_traj_npy}")
 
-    # View 1: camera frame
-    cam_axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-    geoms_cam = [cam_axis, accum_cam]
-    if traj_ls is not None:
-        geoms_cam.append(traj_ls)
-    geoms_cam.extend(obj_frames)
-
-    print("\n=== View 1: CAMERA frame (accumulated cloud + object trajectory) ===")
-    o3d.visualization.draw_geometries(geoms_cam, width=1280, height=720)
-
-    # View 2: object frame
+    # View: object frame
     obj_axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
     geoms_obj = [obj_axis, fused_obj]
-    print("\n=== View 2: OBJECT frame (fused cloud after cleanup) ===")
+    print("\n=== View: OBJECT frame (fused cloud after cleanup) ===")
     o3d.visualization.draw_geometries(geoms_obj, width=1280, height=720)
-
-    if args.save_ply_cam:
-        o3d.io.write_point_cloud(args.save_ply_cam, accum_cam)
-        print(f"[saved] accumulated camera cloud -> {args.save_ply_cam}")
 
     if args.save_ply_obj:
         o3d.io.write_point_cloud(args.save_ply_obj, fused_obj)

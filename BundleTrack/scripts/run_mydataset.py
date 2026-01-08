@@ -54,7 +54,7 @@ def run_one_video(data_dir,model_name,model_dir,cfg1,port):
   os.system(f'mkdir -p {cur_out_dir}')
 
   cfg['data_dir'] = data_dir
-  cfg['mask_dir'] = '/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_object2/masks'
+  cfg['mask_dir'] = '/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y/masks'
   # print("maskdir:::::::",cfg['mask_dir'])
   cfg['model_name'] = model_name
   cfg['model_dir'] = model_dir
@@ -80,9 +80,9 @@ def run_one_video(data_dir,model_name,model_dir,cfg1,port):
 
 if __name__=='__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_object2')
+  parser.add_argument('--data_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/inhand_y')
   parser.add_argument('--port', type=int, default=5555)
-  parser.add_argument('--model_name', type=str, default='inhand_object2')
+  parser.add_argument('--model_name', type=str, default='inhand_y')
   parser.add_argument('--model_dir', type=str, default='/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/object/006_mustard_bottle/tsdf/textured1.obj')
 
 

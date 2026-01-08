@@ -189,7 +189,7 @@ def select_topk_indices(scores: np.ndarray, k: int) -> np.ndarray:
 # ---------------- Main ----------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pcd", type=str, default="./reconstruction.ply", help="path to point cloud (.ply/.pcd/.xyz/.npz)")
+    ap.add_argument("--pcd", type=str, default="./reconstruction_5s.ply", help="path to point cloud (.ply/.pcd/.xyz/.npz)")
     ap.add_argument("--voxel", type=float, default=0.003, help="voxel downsample size (m)")
     ap.add_argument("--max_points", type=int, default=12000, help="cap training points after downsample")
     ap.add_argument("--num_inducing", type=int, default=512, help="number of inducing points (SVGP)")
