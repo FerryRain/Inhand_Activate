@@ -686,13 +686,13 @@
     <visual>
       <origin rpy="3.1415927 0. -3.1415927" xyz="-0.0625595 0.0784597 -0.0489929"/>
       <geometry>
-        <mesh filename="meshes/onshape_thumb_fingertip_visuals_thumb_fingertip_mesh.obj" scale="1. 1. 1."/>
+        <mesh filename="meshes/thin_thumbtip.obj" scale="1. 1. 1."/>
       </geometry>
     </visual>
     <collision>
       <origin rpy="3.1415927 0. -3.1415927" xyz="-0.0625595 0.0784597 -0.0489929"/>
       <geometry>
-        <mesh filename="meshes/onshape_thumb_fingertip_collisions_thumb_fingertip_mesh.obj" scale="1. 1. 1."/>
+        <mesh filename="meshes/thin_thumbtip.obj" scale="1. 1. 1."/>
       </geometry>
     </collision>
   </link>
@@ -710,17 +710,17 @@
 
   <!-- Joints to attach FSR sensors -->
   <joint name="dip_1" type="fixed">
-    <origin xyz="0.0084151 -0.0367202 -0.0143087" rpy="1.5707964 -0. -1.5707964"/>
+    <origin xyz="0.0090151 -0.0227202 -0.0143087" rpy="1.5707964 -0. -1.5707964"/>
     <parent link="onshape_dip"/>
     <child link="dip_1_fsr"/>
   </joint>
   <joint name="dip_2_fsr_dip_2" type="fixed">
-    <origin xyz="0.0084151 -0.0367202 -0.0147031" rpy="1.5707964 -0.0000001 -1.5707964"/>
+    <origin xyz="0.0090151 -0.0227202 -0.0147031" rpy="1.5707964 -0.0000001 -1.5707964"/>
     <parent link="onshape_dip_2"/>
     <child link="dip_2_fsr"/>
   </joint>
   <joint name="dip_3_fsr_dip_3" type="fixed">
-    <origin xyz="0.0084151 -0.0367202 -0.0145862" rpy="1.5707964 -0.0000001 -1.5707964"/>
+    <origin xyz="0.0090151 -0.0227202 -0.0145862" rpy="1.5707964 -0.0000001 -1.5707964"/>
     <parent link="onshape_dip_3"/>
     <child link="dip_3_fsr"/>
   </joint>
@@ -745,32 +745,32 @@
     <child link="palm_4_fsr"/>
   </joint>
   <joint name="pip_1" type="fixed">
-    <origin xyz="0.0020601 -0.0000087 0.0230151" rpy="3.1415925 0. 3.1415925"/>
+    <origin xyz="0.0019601 -0.0000087 0.0230151" rpy="3.1415925 0. 3.1415925"/>
     <parent link="onshape_pip"/>
     <child link="pip_1_fsr"/>
   </joint>
   <joint name="pip_2_fsr_pip_2" type="fixed">
-    <origin xyz="0.0020601 -0.0002805 0.0230151" rpy="3.1415925 0. 3.1415925"/>
+    <origin xyz="0.0019601 -0.0002805 0.0230151" rpy="3.1415925 0. 3.1415925"/>
     <parent link="onshape_pip_2"/>
     <child link="pip_2_fsr"/>
   </joint>
   <joint name="pip_3_fsr_pip_3" type="fixed">
-    <origin xyz="0.0020601 0.0007753 0.0230151" rpy="3.1415925 0. 3.1415925"/>
+    <origin xyz="0.0019601 0.0007753 0.0230151" rpy="3.1415925 0. 3.1415925"/>
     <parent link="onshape_pip_3"/>
     <child link="pip_3_fsr"/>
   </joint>
   <joint name="thumb_dip_fsr_thumb_dip" type="fixed">
-    <origin xyz="0.0094383 -0.007675 0.0144321" rpy="3.1415927 0. 0.0000001"/>
+    <origin xyz="0.0094383 -0.017675 0.0144321" rpy="3.1415927 0. 0.0000001"/>
     <parent link="onshape_thumb_fingertip"/>
     <child link="thumb_dip_fsr"/>
   </joint>
   <joint name="thumb_pip_fsr_thumb_pip" type="fixed">
-    <origin xyz="-0.0094383 0.0105035 0.0142321" rpy="3.1415925 0. -3.1415927"/>
+    <origin xyz="-0.0094383 0.0205035 0.0142321" rpy="3.1415925 0. -3.1415927"/>
     <parent link="onshape_thumb_dip"/>
     <child link="thumb_pip_fsr"/>
   </joint>
   <joint name="thumb_tip" type="fixed">
-    <origin xyz="0.0102383 -0.0453895 0.0144321" rpy="3.1415927 0. 0.0000001"/>
+    <origin xyz="0.0020383 -0.0600895 0.0144321" rpy="3.1415927 0. 0.0000001"/>
     <parent link="onshape_thumb_fingertip"/>
     <child link="thumb_tip_fsr"/>
   </joint>
@@ -793,26 +793,26 @@
   <!-- Links for FSR sensors -->
   <link name="dip_1_fsr">
     <visual>
-      <origin xyz="0. 0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/dip_1_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. 0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/dip_1_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
     </visual>
     <collision>
-      <origin xyz="0. 0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/dip_1_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. 0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/dip_1_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
     </collision>
   </link>
   <link name="dip_2_fsr">
     <visual>
-      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_2_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_2_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
     </visual>
     <collision>
-      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_2_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_2_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
     </collision>
   </link>
   <link name="dip_3_fsr">
     <visual>
-      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_3_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_3_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
     </visual>
     <collision>
-      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_3_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. -0. -0." rpy="-0.0000001 0.0000001 -0.0000001"/><geometry><mesh filename="meshes/dip_3_fsr_Cube.obj" scale="0.5 0.8 0.5"/></geometry>
     </collision>
   </link>
   <link name="palm_1_fsr">
@@ -873,18 +873,18 @@
   </link>
   <link name="thumb_dip_fsr">
     <visual>
-      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_dip_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_dip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
     </visual>
     <collision>
-      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_dip_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_dip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
     </collision>
   </link>
   <link name="thumb_pip_fsr">
     <visual>
-      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_pip_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_pip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
     </visual>
     <collision>
-      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_pip_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
+      <origin xyz="0. 0. 0." rpy="0. 0. 0."/><geometry><mesh filename="meshes/thumb_pip_fsr_Cube.obj" scale="1. 0.5 1."/></geometry>
     </collision>
   </link>
   <link name="thumb_tip_fsr">

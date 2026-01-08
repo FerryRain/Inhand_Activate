@@ -686,13 +686,13 @@
     <visual>
       <origin rpy="3.1415927 0. -3.1415927" xyz="-0.0625595 0.0784597 -0.0489929"/>
       <geometry>
-        <mesh filename="meshes/onshape_thumb_fingertip_visuals_thumb_fingertip_mesh.obj" scale="1. 1. 1."/>
+        <mesh filename="meshes/long_thin_thumbtip_2.obj" scale="1. 1. 1."/>
       </geometry>
     </visual>
     <collision>
       <origin rpy="3.1415927 0. -3.1415927" xyz="-0.0625595 0.0784597 -0.0489929"/>
       <geometry>
-        <mesh filename="meshes/onshape_thumb_fingertip_collisions_thumb_fingertip_mesh.obj" scale="1. 1. 1."/>
+        <mesh filename="meshes/long_thin_thumbtip_2.obj" scale="1. 1. 1."/>
       </geometry>
     </collision>
   </link>
@@ -770,7 +770,7 @@
     <child link="thumb_pip_fsr"/>
   </joint>
   <joint name="thumb_tip" type="fixed">
-    <origin xyz="0.0102383 -0.0453895 0.0144321" rpy="3.1415927 0. 0.0000001"/>
+    <origin xyz="0.0020383 -0.0600895 0.0144321" rpy="3.1415927 0. 0.0000001"/>
     <parent link="onshape_thumb_fingertip"/>
     <child link="thumb_tip_fsr"/>
   </joint>
@@ -919,5 +919,5 @@
       <origin xyz="0. -0. -0." rpy="-0. 0. -0."/><geometry><mesh filename="meshes/tip_3_fsr_Cube.obj" scale="1. 1. 1."/></geometry>
     </collision>
   </link>
-
+  
 </robot>

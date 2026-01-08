@@ -417,6 +417,12 @@ class AllegroArmMOAR(VecTask):
         elif self.rotation_axis == "z":
             self.all_spin_choices = torch.tensor([[0.0, 0.0, 1.0]], device=self.device)
 
+        elif self.rotation_axis == "-x":
+            self.all_spin_choices = torch.tensor([[-1.0, 0.0, 0.0]], device=self.device)
+
+        elif self.rotation_axis == "-y":
+            self.all_spin_choices = torch.tensor([[0.0, 1.0, 0.0]], device=self.device)
+
         else:
             assert False, "wrong spin axis"
 

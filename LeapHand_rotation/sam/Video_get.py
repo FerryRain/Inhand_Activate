@@ -16,7 +16,7 @@ base_folder = 'realsense_data_auto'  # 主文件夹名称
 CAPTURE_INTERVAL = 0.1
 
 # 抗频闪: 1=50Hz, 2=60Hz
-POWER_LINE_FREQ = 1 
+POWER_LINE_FREQ = 1
 
 # --- 创建输出目录 ---
 run_timestamp = int(time.time())
@@ -24,7 +24,7 @@ OUTPUT_DIR = os.path.join(base_folder, f"run_{run_timestamp}")
 
 dirs = {
     'root': OUTPUT_DIR,
-    'color': os.path.join(OUTPUT_DIR, 'color'),
+    'rgb': os.path.join(OUTPUT_DIR, 'rgb'),
     'depth': os.path.join(OUTPUT_DIR, 'depth'),  # 16位原始深度
     'vis': os.path.join(OUTPUT_DIR, 'depth_vis') # 可视化深度图
 }
@@ -106,12 +106,11 @@ try:
         # 如果当前时间与上次保存时间的差值大于设定的间隔
         if current_time - last_save_time >= CAPTURE_INTERVAL:
             
-            # 构造文件名 (使用帧号+时间戳)
-            timestamp_str = str(int(current_time * 1000))
-            fname = f"{frame_count:05d}_{timestamp_str}"
+            # 构造文件名 (使用帧号)
+            fname = f"{frame_count:06d}"
             
             # 保存彩色图 (PNG)
-            cv2.imwrite(os.path.join(dirs['color'], f"{fname}.png"), color_image)
+            cv2.imwrite(os.path.join(dirs['rgb'], f"{fname}.jpg"), color_image)
             
             # 保存深度图 (16-bit PNG, 包含真实距离信息)
             cv2.imwrite(os.path.join(dirs['depth'], f"{fname}.png"), depth_image)
@@ -119,7 +118,7 @@ try:
             # (可选) 保存可视化深度图
             cv2.imwrite(os.path.join(dirs['vis'], f"{fname}.jpg"), depth_colormap)
             
-            print(f"[已保存] 帧: {frame_count} | 时间: {timestamp_str}")
+            print(f"[已保存] 帧: {frame_count}")
             
             # 更新状态
             last_save_time = current_time

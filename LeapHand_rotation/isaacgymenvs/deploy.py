@@ -8,8 +8,6 @@
 # https://github.com/HaozhiQi/hora/blob/main/hora/algo/deploy/deploy.py
 # --------------------------------------------------------
 
-
-from attr import has
 import isaacgym
 import torch
 import xml.etree.ElementTree as ET
@@ -31,18 +29,14 @@ from isaacgymenvs.learning import amp_network_builder
 from isaacgym.torch_utils import *
 import numpy as np
 from gym import spaces
-import matplotlib.pyplot as plt
 from collections import deque
 import time
-import math
-import random
 import serial
 import threading
 import cv2
 from scipy.ndimage import gaussian_filter
 import copy
 from pynput import keyboard
-import pandas as pd
 # import matplotlib.pyplot as plt
 # import seaborn as sns
 # os.system('cls')
@@ -199,7 +193,7 @@ def readThread(serDev):
 PORT ='/dev/ttyUSB0'
 BAUD = 2000000
 # serDev = serial.Serial(PORT,2000000)
-serDev = serial.Serial('/dev/ttyUSB0',BAUD)
+serDev = serial.Serial(PORT,BAUD)
 exitThread = False
 serDev.flush()
 serialThread = threading.Thread(target=readThread, args=(serDev,))
@@ -525,10 +519,10 @@ class HardwarePlayer(object):
             action = torch.clamp(action, -1.0, 1.0)
 
             #ramp up action from zero when switching models
-            if transition_counter > 0:
-                transition_counter -= 1
-                scale_factor = 1.0 - transition_counter / TRANSITION_STEPS
-                action = action * scale_factor
+            # if transition_counter > 0:
+            #     transition_counter -= 1
+            #     scale_factor = 1.0 - transition_counter / TRANSITION_STEPS
+            #     action = action * scale_factor
 
             if "actions_mask" in self.config["task"]["env"]:
                 action = action * torch.tensor(self.config["task"]["env"]["actions_mask"]).cuda()[None, :]
@@ -569,23 +563,11 @@ class HardwarePlayer(object):
                 with tactile_lock:
                     tactile_tensor = latest_tactile_tensor.to(self.device)
             # print("tactile_tensor:", tactile_tensor)
-
-            # [0:6]: 全零 (机械臂关节)
             last_obs_buf[0, 0:6] = 0.0
-            
-            # [6:22]: 归一化的手部关节角度
             last_obs_buf[0, 6:22] = unscale(obses, self.leap_dof_lower, self.leap_dof_upper)
-            
-            # [22:29]: 全零
             last_obs_buf[0, 22:29] = 0.0
-            
-            # [29:45]: 归一化的手部目标关节角度
             last_obs_buf[0, 29:45] = unscale(prev_target[0, self.num_arm_dofs:], self.leap_dof_lower, self.leap_dof_upper)
-
-            # [45:61]: 触觉数据
             last_obs_buf[0, 45:61] = tactile_tensor
-            
-            # [61:85]: 旋转轴 (保持不变)
             last_obs_buf[0, 61:85] = self.spin_axis[self.rotation_axis].repeat(1, 8)
             obs_buf = torch.cat((last_obs_buf, obs_buf[:, :-self.n_obs_dim_single_frame]), dim=-1)
 

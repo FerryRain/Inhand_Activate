@@ -32,6 +32,16 @@ bash lf-net-release/docker/run_container.sh
 cd [PATH_TO_BUNDLETRACK]
 cd lf-net-release && python run_server.py
 ```
+> Open new bash of the docker
+
+> docker exec -it bundletrack /bin/bash
+> 
+>  cd home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/
+> 
+
+> docker exec -it lfnet /bin/bash
+> 
+>  cd home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack
 
 > Keep this terminal running. BundleTrack uses it for feature detection/matching.
 

@@ -6,7 +6,7 @@ physics_engine: ${..physics_engine}
 # new added
 models:
   x:
-    checkpoint: "../runs/final/x-ps.pth"
+    checkpoint: "../runs/final/-x-ps.pth"
   y:
     checkpoint: "../runs/final/y-ps.pth"
   z:

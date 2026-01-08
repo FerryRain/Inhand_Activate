@@ -107,7 +107,7 @@ To use different sensing capabilities, set `distill.ablation_mode` to:
 
 #### Deploy
 ```
-python3 deploy.py wandb_activate=false num_envs=1 headless=false test=true task=AllegroArmMOAR task.env.axis=z checkpoint=../runs/final/z-ps.pth
+python3 deploy.py wandb_activate=false num_envs=1 headless=false test=true task=AllegroArmMOAR
 ```
 
 ## Citing

@@ -1,0 +1,328 @@
+task:
+  name: AllegroArmMOAR
+  physics_engine: ${..physics_engine}
+  models:
+    x:
+      checkpoint: ../runs/final/-x-ps.pth
+    'y':
+      checkpoint: ../runs/final/y-ps.pth
+    z:
+      checkpoint: ../runs/final/z-ps.pth
+  default_axis: z
+  env:
+    objectSize: large
+    pc_ablation: false
+    legacy_obs: true
+    pc_mode: label
+    ablation_mode: no-pc
+    is_distillation: false
+    observation:
+      obs: null
+      pointcloud:
+        bound:
+        - 0.5
+        - 10
+        - -1
+        - 1
+        - 0.12
+        - 0.8
+        numSample: 808
+    camera:
+      pos:
+      - 0.45252319
+      - 0.33285737
+      - 0.5127288
+      rot:
+      - -0.6354564
+      - 44.3181397
+      - -70.6868244
+      width: 96
+      height: 72
+      fov: 69.4
+    rewardType: finger
+    sensor: thick
+    objInit: new
+    objSet: C
+    pc_category: mug
+    skill_step: 500
+    spin_coef: 1.0
+    main_coef: 0.0
+    aux_coef: 0.0
+    vel_coef: -0.1
+    contact_coef: 0.0
+    torque_coef: -0.0003
+    work_coef: -0.0003
+    finger_coef: 0.1
+    handInit: default
+    numEnvs: 16
+    envSpacing: 0.75
+    episodeLength: 500
+    enableDebugVis: false
+    aggregateMode: 1
+    sensorThresh: 1.0
+    sensorNoise: 0.1
+    obs_stack: 4
+    latency: 0.2
+    m_low: 0.2
+    m_up: 0.6
+    useInitRandomRotation: false
+    force_debug: false
+    numTestEnvs: 16
+    test:
+      test_m_low: 0.1
+      test_m_up: 1.4
+    robotStiffness: 3.0
+    clipObservations: 5.0
+    clipActions: 1.0
+    stiffnessScale: 1.0
+    forceLimitScale: 1.0
+    relScale: 0.2
+    useRelativeControl: true
+    usePrevTarget: false
+    dofSpeedScale: 20.0
+    actionsMovingAverage: 0.8
+    controlFrequencyInv: 6
+    startPositionNoise: 0.01
+    startRotationNoise: 0.0
+    resetPositionNoise: 0.01
+    resetRotationNoise: 0.0
+    resetDofPosRandomInterval: 0.2
+    resetDofVelRandomInterval: 0.0
+    forceScale: 2.0
+    forceProbRange:
+    - 0.2
+    - 0.25
+    forceProbScalar: 0.25
+    forceDecay: 0.99
+    forceDecayInterval: 0.1
+    disableSet: 0
+    axis: x
+    distRewardScale: -3.0
+    rotRewardScale: 1.0
+    rotEps: 0.1
+    actionPenaltyScale: 0.0
+    controlPenaltyScale: 0.0
+    reachGoalBonus: 250
+    fallDistance: 0.1
+    fallPenalty: -50.0
+    objectType: block
+    observationType: partial_stack
+    asymmetric_observations: true
+    successTolerance: 0.1
+    printNumSuccesses: false
+    maxConsecutiveSuccesses: 0
+    asset:
+      assetFileName: urdf/xarm6/xarm6_allegro_left_fsr.urdf
+      assetFileNameBlock: urdf/objects/cube_multicolor_allegro.urdf
+      assetFileNameEgg: mjcf/open_ai_assets/hand/egg.xml
+      assetFileNamePen: mjcf/open_ai_assets/hand/pen.xml
+  task:
+    randomize: true
+    randomization_params:
+      frequency: 1000
+      observations:
+        range:
+        - 0
+        - 0.05
+        range_correlated:
+        - 0
+        - 0.001
+        operation: additive
+        distribution: gaussian
+      actions:
+        range:
+        - 0.0
+        - 0.04
+        range_correlated:
+        - 0
+        - 0.015
+        operation: additive
+        distribution: gaussian
+      sim_params:
+        gravity:
+          range:
+          - 0
+          - 0.3
+          operation: additive
+          distribution: gaussian
+      actor_params:
+        hand:
+          color: false
+          dof_properties:
+            stiffness:
+              range:
+              - 0.75
+              - 1.5
+              operation: scaling
+              distribution: loguniform
+            lower:
+              range:
+              - 0
+              - 1.0e-05
+              operation: additive
+              distribution: gaussian
+            upper:
+              range:
+              - 0
+              - 1.0e-05
+              operation: additive
+              distribution: gaussian
+    enableCameraSensors: false
+  sim:
+    dt: 0.01667
+    substeps: 2
+    up_axis: z
+    use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
+    gravity:
+    - 0.0
+    - 0.0
+    - -9.81
+    physx:
+      num_threads: ${....num_threads}
+      solver_type: ${....solver_type}
+      use_gpu: ${contains:"cuda",${....sim_device}}
+      num_position_iterations: 8
+      num_velocity_iterations: 0
+      max_gpu_contact_pairs: 8388608
+      num_subscenes: ${....num_subscenes}
+      contact_offset: 0.002
+      rest_offset: 0.0
+      bounce_threshold_velocity: 0.2
+      max_depenetration_velocity: 100.0
+      default_buffer_size_multiplier: 5.0
+      contact_collection: 2
+train:
+  params:
+    seed: ${...seed}
+    algo:
+      name: a2c_continuous
+    model:
+      name: continuous_a2c_logstd
+    network:
+      name: actor_critic
+      separate: false
+      pointnet: small
+      space:
+        continuous:
+          mu_activation: None
+          sigma_activation: None
+          mu_init:
+            name: default
+          sigma_init:
+            name: const_initializer
+            val: 0
+          fixed_sigma: true
+      mlp:
+        units:
+        - 512
+        - 256
+        - 256
+        activation: elu
+        d2rl: false
+        initializer:
+          name: default
+        regularizer:
+          name: None
+    load_checkpoint: ${if:${...checkpoint},True,False}
+    load_path: ${...checkpoint}
+    config:
+      name: ${resolve_default:AllegroArmMOA,${....experiment}}
+      env_name: rlgpu
+      prefix: x-psS1.0_C0.0_M0.02026-01-08_14-00-07-83810
+      user_prefix: x-ps
+      auto_prefix: S${....task.env.spin_coef}_C${....task.env.contact_coef}_M${....task.env.main_coef}
+      multi_gpu: ${....multi_gpu}
+      ppo: true
+      mixed_precision: false
+      normalize_input: true
+      normalize_value: true
+      value_bootstrap: true
+      num_actors: ${....task.env.numEnvs}
+      reward_shaper:
+        scale_value: 0.01
+      normalize_advantage: true
+      gamma: 0.99
+      tau: 0.95
+      learning_rate: 0.0001
+      lr_schedule: adaptive
+      schedule_type: standard
+      kl_threshold: 0.02
+      score_to_win: 100000
+      max_epochs: ${resolve_default:20100,${....max_iterations}}
+      save_best_after: 100
+      save_frequency: 100
+      print_stats: true
+      grad_norm: 1.0
+      entropy_coef: 0.0
+      truncate_grads: Trues
+      e_clip: 0.2
+      horizon_length: 16
+      minibatch_size: 32
+      mini_epochs: 4
+      critic_coef: 5
+      clip_value: true
+      seq_length: 4
+      bptt_len: 16
+      bounds_loss_coef: 0.005
+      bc_loss_coef: 0.01
+      weight_decay: 0.0
+      player_collect: false
+      player:
+        deterministic: true
+        games_num: 1000
+        games_repeat: 1
+        desired_games: 10000
+        print_stats: true
+      central_value_config:
+        minibatch_size: 32
+        mini_epochs: 4
+        learning_rate: 0.0005
+        lr_schedule: adaptive
+        schedule_type: standard
+        kl_threshold: 0.016
+        clip_value: true
+        normalize_input: true
+        truncate_grads: true
+        network:
+          name: actor_critic
+          central_value: true
+          mlp:
+            units:
+            - 512
+            - 512
+            - 256
+            - 256
+            activation: elu
+            d2rl: false
+            initializer:
+              name: default
+            regularizer:
+              name: None
+task_name: ${task.name}
+experiment: x-ps
+num_envs: ''
+seed: 42
+torch_deterministic: false
+max_iterations: ''
+physics_engine: physx
+pipeline: gpu
+sim_device: cuda:0
+rl_device: cuda:0
+graphics_device_id: 0
+num_threads: 4
+solver_type: 1
+num_subscenes: 4
+test: true
+checkpoint: /home/vertin/code/Inhand_Activate/LeapHand_rotation/runs/final/-x-ps.pth
+multi_gpu: false
+wandb_activate: false
+wandb_group: ''
+wandb_name: ${train.params.config.name}
+wandb_entity: ''
+wandb_project: isaacgymenvs
+capture_video: false
+capture_video_freq: 1464
+capture_video_len: 100
+force_render: true
+headless: false
+player_action_savepath: ./a.pth
