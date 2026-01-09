@@ -8,9 +8,9 @@ models:
   x:
     checkpoint: "../runs/final/-x-ps.pth"
   y:
-    checkpoint: "../runs/final/y-ps.pth"
+    checkpoint: "../runs/final/-y-ps.pth"
   z:
-    checkpoint: "../runs/final/z-ps.pth"
+    checkpoint: "../runs/final/z-ps_1.pth"
 # -----------------
 default_axis: "z"
 

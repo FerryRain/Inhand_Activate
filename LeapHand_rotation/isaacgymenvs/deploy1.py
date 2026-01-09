@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+
 import sys
 from types import ModuleType
 import torch
@@ -275,8 +278,8 @@ class HardwarePlayer(object):
         self.relative_scale = self.config["task"]["env"].get("relScale", 0.5)
 
         self.spin_axis = {
-            'x': torch.tensor([[1.0, 0.0, 0.0]], device=self.device),
-            'y': torch.tensor([[0.0, -1.0, 0.0]], device=self.device),
+            'x': torch.tensor([[-1.0, 0.0, 0.0]], device=self.device),
+            'y': torch.tensor([[0.0, 1.0, 0.0]], device=self.device),
             'z': torch.tensor([[0.0, 0.0, 1.0]], device=self.device)
         }
         self.players = {}
