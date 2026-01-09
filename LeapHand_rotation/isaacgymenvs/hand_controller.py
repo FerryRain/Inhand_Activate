@@ -298,9 +298,10 @@ class HardwarePlayer(object):
         
         self.post_init()
         self.target_axis = self.rotation_axis
-        self.start_keyboard_listener()
+        # self.start_keyboard_listener()
         self.is_rotating = False   
         self.active_key = None
+
 
     def post_init(self):
         arm_hand_dof_default_pos = []
@@ -328,47 +329,13 @@ class HardwarePlayer(object):
         self.leap_dof_lower = self.real_to_sim(to_torch(lower, device=self.device).unsqueeze(0)).squeeze()
         self.leap_dof_upper = self.real_to_sim(to_torch(upper, device=self.device).unsqueeze(0)).squeeze()
 
-    def on_key_press(self, key):
-        try:
-            char = key.char.lower()
-            if char in ['x', 'y', 'z']:
-                if self.active_key is None:
-                    print(f"\n--- Key '{char}' pressed. Locked control. ---")
-                    self.active_key = char       
-                    self.target_axis = char   
-                    self.is_rotating = True    
-                elif self.active_key == char:
-                    pass
-                else:
-                    pass
-        except AttributeError:
-            pass
-    
-    def on_key_release(self, key):
-        try:
-            char = key.char.lower()
-            if char == self.active_key:
-                self.active_key = None    
-                self.is_rotating = False    
-            else:
-                pass
-        except AttributeError:
-            pass
-
-    def start_keyboard_listener(self):
-        listener = keyboard.Listener(
-            on_press=self.on_key_press, 
-            on_release=self.on_key_release
-        )
-        listener.daemon = True
-        listener.start()
 
     def get_axis(self, axis=None):
         if axis is None:
             self.active_key = None
             self.is_rotating = False
         else:
-            print(f"\n--- Starting axis '{axis}' rotating. ---")
+
             self.active_key = axis
             self.target_axis = str(axis)
             self.is_rotating = True
@@ -407,6 +374,7 @@ class HardwarePlayer(object):
 
         print("Start deployment loop...")
         while True:
+
             loop_start_time = time.perf_counter()
 
             if self.target_axis != self.rotation_axis:
@@ -468,13 +436,13 @@ class HardwarePlayer(object):
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
-    def restore_all_models(self):
+    def restore_all_models(self): 
         model_builder.register_model('continuous_amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network))
         model_builder.register_network('amp', lambda **kwargs : amp_network_builder.AMPBuilder())
-
+        
         for axis, model_config in self.config['task']['models'].items():
             print(f"Loading model for axis: {axis}...")
-
+            
             rlg_config = copy.deepcopy(self.config['train'])
             rlg_config["params"]["config"]["env_info"] = {
                 "observation_space": spaces.Box(-np.inf, np.inf, (self.n_obs_dim_single_frame * self.n_stack,)),
@@ -483,16 +451,16 @@ class HardwarePlayer(object):
             }
 
             runner = Runner()
-
+ 
             runner.player_factory.register_builder('amp_continuous', lambda **kwargs : amp_players.AMPPlayerContinuous(**kwargs))
-
+            
             runner.load(rlg_config)
             runner.reset()
-
+            
             player = runner.create_player()
             _restore(player, {'checkpoint': model_config['checkpoint']})
             _override_sigma(player, {'sigma': None})
-
+            
             self.players[axis] = player
 
         self.active_player = self.players[self.rotation_axis]
@@ -501,6 +469,8 @@ class HardwarePlayer(object):
 @hydra.main(config_name='config', config_path='cfg')
 def main(config: DictConfig):
     agent = HardwarePlayer(config)
+    # agent.init()
+    agent.get_axis("x")
     agent.restore_all_models()
     agent.deploy()
 
