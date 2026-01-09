@@ -81,6 +81,16 @@ class Tracker:
         key = cv2.waitKey(1) & 0xFF
 
         if key == ord('q'):
+            self.sock.close()
+            for fn in ["stop", "close", "shutdown"]:
+                if hasattr(self.camera, fn):
+                    try:
+                        getattr(self.camera, fn)()
+                        break
+                    except Exception:
+                        pass
+
+            print("[EXIT] Done.")
             return "quit"
 
         if (key == ord('s')) and (not self.init_done):
@@ -164,7 +174,19 @@ class Tracker:
                 key = cv2.waitKey(1) & 0xFF
 
                 if key == ord('q'):
+                    self.sock.close()
+                    for fn in ["stop", "close", "shutdown"]:
+                        if hasattr(self.camera, fn):
+                            try:
+                                getattr(self.camera, fn)()
+                                break
+                            except Exception:
+                                pass
+
+                    print("[EXIT] Done.")
                     return "quit"
+                if key == ord('r'):
+                    return "reconstruct"
             self.box_xyxy = self.prev_box_xyxy if self.prev_box_xyxy is not None else [0, 0, self.color.shape[1] - 1,
                                                                                        self.color.shape[0] - 1]
 
