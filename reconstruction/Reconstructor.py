@@ -1,20 +1,11 @@
 """
 @FileName：Reconstructer.py
-@Description：
-@Author：Ferry
+@Description：BundleTrack keyframes -> fused object point cloud, class wrapper.
+@Author：Ferry (refactor by ChatGPT)
 @Time：2026 1/9/26 4:46 PM
 @Copyright：©2024-2026 ShanghaiTech University-RIMLAB
 """
-"""
-@FileName：reconstruction_fuser.py
-@Description：
-    BundleTrack keyframes -> fused object point cloud, class wrapper.
-    Default behavior: DO NOT save files. Only keeps last result in self.ply.
-@Author：Ferry (refactor by ChatGPT)
-@Time：2026-01-09
-"""
 
-# from __future__ import annotations
 
 import os
 import glob
@@ -56,12 +47,12 @@ class ReconstructionConfig:
     # post clean
     post_clean: bool = True
     voxel_count_min: int = 8
-    voxel_count_size: float = -1.0     # <0 -> 2*voxel
+    voxel_count_size: float = -1.0
 
-    post_ror_radius: float = -1.0      # <0 -> 4*voxel; 0 disables
+    post_ror_radius: float = -1.0
     post_ror_min_points: int = 20
 
-    dbscan_eps: float = -1.0           # <0 -> 5*voxel
+    dbscan_eps: float = -1.0
     dbscan_min_points: int = 50
 
     # outputs (NOTE: default is NOT saving)
@@ -72,11 +63,7 @@ class ReconstructionConfig:
 
 class Reconstructor:
     """
-    One-shot fused reconstruction from BundleTrack keyframes.
-
     - self.ply holds the last reconstructed colored point cloud.
-    - show() visualizes the last reconstruction.
-    - Default: does NOT save any file.
     """
 
     def __init__(
@@ -94,7 +81,6 @@ class Reconstructor:
 
         self._guessed_depth_scale: Optional[float] = None
 
-    # ---------------- Public API ----------------
     def reconstruct(
         self,
         debug_dir: Optional[str] = None,
@@ -151,7 +137,6 @@ class Reconstructor:
                 skipped += 1
                 continue
 
-            # BundleTrack pose: object_in_camera (T_ob_in_cam)
             T_ob_in_cam = self._load_T_txt(pose_path)
             T_cam_in_ob = np.linalg.inv(T_ob_in_cam)
 
@@ -161,14 +146,12 @@ class Reconstructor:
 
             depth_scale = self._resolve_depth_scale(depth, cfg.depth_scale)
 
-            # mask preprocess
             mask = self._erode_mask(mask, cfg.mask_erode_k, cfg.mask_erode_iter)
             if cfg.mask_open_k > 1 or cfg.mask_close_k > 1 or cfg.mask_keep_largest:
                 mask = self._clean_mask(mask, cfg.mask_open_k, cfg.mask_close_k, cfg.mask_keep_largest)
             if cfg.mask_drop_boundary_px > 0:
                 mask = self._ablate_mask_boundary(mask, cfg.mask_drop_boundary_px)
 
-            # depth preprocess
             depth = self._depth_range_filter(depth, depth_scale=depth_scale, zmin_m=cfg.zmin, zmax_m=cfg.zmax)
             depth = self._denoise_depth_median(depth, cfg.depth_median_k)
 
@@ -197,13 +180,11 @@ class Reconstructor:
             fused_obj += pcd_obj
 
             processed += 1
-            # if verbose and (i % 30 == 0):
-            #     print(f"[{i}/{len(fids)}] fused points = {len(fused_obj.points)}")
 
         if fused_obj.is_empty():
             raise RuntimeError("No valid frames processed / fused point cloud is empty.")
 
-        # final downsample (for colored main cloud)
+        # downsample
         if cfg.voxel > 0:
             fused_obj = fused_obj.voxel_down_sample(float(cfg.voxel))
 
@@ -224,8 +205,7 @@ class Reconstructor:
             "post_stats": post_stats,
         }
 
-        # saving behavior: default is NONE
-        # priority: explicit args > cfg fields
+
         color_out = save_color if save_color is not None else cfg.save_ply_color
         xyz_out = save_xyz_ascii if save_xyz_ascii is not None else cfg.save_ply_xyz
 
@@ -291,7 +271,6 @@ class Reconstructor:
         if verbose:
             print(f"[saved xyz ASCII] {path}  points={len(xyz_only.points)}  (down_voxel={dv})")
 
-    # ---------------- Pipeline pieces ----------------
     def _post_clean(self, pcd: o3d.geometry.PointCloud, cfg: ReconstructionConfig, verbose: bool) -> Tuple[o3d.geometry.PointCloud, Dict[str, Any]]:
         stats: Dict[str, Any] = {}
 
@@ -303,8 +282,7 @@ class Reconstructor:
         pcd = self._voxel_count_filter(pcd, voxel_size=vc_size, min_count=cfg.voxel_count_min)
         after = len(pcd.points)
         stats["voxel_count"] = {"size": float(vc_size), "min": int(cfg.voxel_count_min), "before": int(before), "after": int(after)}
-        # if verbose:
-        #     print(f"[post voxel-count] size={vc_size:.4f}, min={cfg.voxel_count_min}: {before} -> {after}")
+
 
         pr = cfg.post_ror_radius
         if pr < 0:
@@ -319,8 +297,6 @@ class Reconstructor:
             )
             after = len(pcd.points)
             stats["ror"] = {"radius": float(pr), "min_points": int(cfg.post_ror_min_points), "before": int(before), "after": int(after)}
-            # if verbose:
-            #     print(f"[post ROR] r={pr:.4f}, k={cfg.post_ror_min_points}: {before} -> {after}")
         else:
             stats["ror"] = {"disabled": True}
 
@@ -332,12 +308,10 @@ class Reconstructor:
         pcd = self._keep_largest_cluster_dbscan(pcd, eps=float(eps), min_points=int(cfg.dbscan_min_points))
         after = len(pcd.points)
         stats["dbscan"] = {"eps": float(eps), "min_points": int(cfg.dbscan_min_points), "before": int(before), "after": int(after)}
-        # if verbose:
-        #     print(f"[post DBSCAN-largest] eps={eps:.4f}, min_pts={cfg.dbscan_min_points}: {before} -> {after}")
 
         return pcd, stats
 
-    # ---------------- IO helpers ----------------
+
     @staticmethod
     def _load_K_txt(path: str) -> np.ndarray:
         K = np.loadtxt(path).astype(np.float64)
@@ -407,7 +381,6 @@ class Reconstructor:
             self._guessed_depth_scale = 1000.0 if depth.dtype == np.uint16 else 1.0
         return float(self._guessed_depth_scale)
 
-    # ---------------- Mask preprocess ----------------
     @staticmethod
     def _erode_mask(mask_u8_255: np.ndarray, k: int, iters: int) -> np.ndarray:
         if k <= 1 or iters <= 0:
@@ -457,7 +430,6 @@ class Reconstructor:
         out[band] = 0
         return out
 
-    # ---------------- Depth preprocess ----------------
     @staticmethod
     def _depth_range_filter(depth: np.ndarray, depth_scale: float, zmin_m: float, zmax_m: float) -> np.ndarray:
         if (zmin_m <= 0) and (zmax_m <= 0):
@@ -535,7 +507,6 @@ class Reconstructor:
         d[bad] = 0.0
         return d.astype(out.dtype)
 
-    # ---------------- Open3D helpers ----------------
     @staticmethod
     def _make_masked_rgbd(rgb: np.ndarray, depth: np.ndarray, mask_u8_255: np.ndarray, depth_scale: float, depth_trunc: float):
         depth_masked = depth.copy()
@@ -601,9 +572,13 @@ class Reconstructor:
 
 # ---------------- Example ----------------
 if __name__ == "__main__":
-    recon = BundleTrackReconstructor()
+    recon = Reconstructor()
     recon.reconstruct(visualize=False, verbose=True)  # default: no saving
     recon.show()
+
+
     # If you want saving:
     # recon.save_color("./reconstruction_clean_color.ply")
     # recon.save_xyz_ascii("./reconstruction_xyz_ascii.ply")
+    # or
+    # recon.reconstruct(save_color="./color.ply", save_xyz_ascii="./xyz_ascii.ply")
