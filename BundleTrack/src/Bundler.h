@@ -72,6 +72,7 @@ public:
   std::shared_ptr<YAML::Node> yml;
   DataLoaderBase* _data_loader;
   std::vector<std::shared_ptr<Frame>> _local_frames;
+  bool _keyframe_dirs_prepared = false;
 
 
 public:
@@ -85,6 +86,7 @@ public:
   void selectKeyFramesForBA();
   void saveNewframeResult();
   void saveNewframeResult1();
+  void prepareKeyframeOutputDirs(bool reset = true);
   // Bundler.h
 
 

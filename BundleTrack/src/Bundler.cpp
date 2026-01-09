@@ -41,11 +41,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // #include <Eigen/Dense>
 #include <sstream>
 #include <iomanip>
+#include <boost/filesystem.hpp>
 
 
 typedef std::pair<int,int> IndexPair;
 using namespace std;
 using namespace Eigen;
+
+static inline bool looks_like_keyframes_dir(const boost::filesystem::path& p)
+{
+  // 你也可以更严格：要求末尾目录名必须是 "keyframes"
+  return p.filename().string() == "keyframes";
+}
 
 Bundler::Bundler(std::shared_ptr<YAML::Node> yml1, DataLoaderBase *data_loader)
 {
@@ -147,10 +154,52 @@ static inline cv::Mat normalize_mask_u8_255(const cv::Mat& in_mask)
 }
 
 
+
+void Bundler::prepareKeyframeOutputDirs(bool reset)
+{
+  if (_keyframe_dirs_prepared) return;
+
+  const std::string debug_dir_str = (*yml)["debug_dir"].as<std::string>();
+  boost::filesystem::path debug_dir(debug_dir_str);
+  boost::filesystem::path base_dir = debug_dir / "keyframes";
+
+  // 确保 debug_dir 存在
+  if (!boost::filesystem::exists(debug_dir))
+    boost::filesystem::create_directories(debug_dir);
+
+  // reset：删除整个 keyframes 目录树
+  if (reset && boost::filesystem::exists(base_dir))
+  {
+    if (!looks_like_keyframes_dir(base_dir))
+      throw std::runtime_error("Refuse to remove non-keyframes directory: " + base_dir.string());
+
+    boost::system::error_code ec;
+    boost::filesystem::remove_all(base_dir, ec);
+    if (ec)
+      throw std::runtime_error("remove_all failed: " + base_dir.string() + " err=" + ec.message());
+  }
+
+  // 重建子目录
+  auto ensure_dir = [](const boost::filesystem::path& d){
+    if (!boost::filesystem::exists(d))
+      boost::filesystem::create_directories(d);
+  };
+
+  ensure_dir(base_dir);
+  ensure_dir(base_dir / "rgb_full");
+  ensure_dir(base_dir / "rgb_obj");
+  ensure_dir(base_dir / "depth");
+  ensure_dir(base_dir / "mask");
+  ensure_dir(base_dir / "poses");
+  ensure_dir(base_dir / "viz");
+
+  _keyframe_dirs_prepared = true;
+}
+
 void Bundler::saveKeyframeResult(const std::shared_ptr<Frame>& frame)
 {
   if (!frame) return;
-
+  prepareKeyframeOutputDirs(true);
   const std::string debug_dir = (*yml)["debug_dir"].as<std::string>();
   const std::string base_dir  = debug_dir + "/keyframes/";
 
@@ -581,62 +630,6 @@ void Bundler::optimizeGPU()
 
 
 
-void Bundler::saveNewframeResult1()
-{
-  const std::string debug_dir = (*yml)["debug_dir"].as<std::string>();
-  const std::string out_dir = debug_dir+"/"+_newframe->_id_str+"/";
-  const std::string pose_out_dir = debug_dir+"/poses/";
-
-  cout<<endl<<"debug_dir:"<<debug_dir<<endl;
-  cout<<"out_dir:"<<out_dir<<endl;
-  cout<<"pose_out_dir:"<<pose_out_dir<<endl;
-
-
-  if (!boost::filesystem::exists(pose_out_dir))
-  {
-    system(std::string("mkdir -p "+pose_out_dir).c_str());
-  }
-
-  Eigen::Matrix4f cur_in_model = _newframe->_pose_in_model;
-  Eigen::Matrix4f ob_in_cam = cur_in_model.inverse();
-
-  std::ofstream ff(pose_out_dir+_newframe->_id_str+".txt");
-  ff<<std::setprecision(10)<<ob_in_cam<<std::endl;
-  ff.close();
-
-  if ((*yml)["LOG"].as<int>()>0)
-  {
-    cv::Mat color_viz = _newframe->_vis.clone();
-    for (int h=0;h<_newframe->_H;h++)
-    {
-      for (int w=0;w<_newframe->_W;w++)
-      {
-        auto &bgr = color_viz.at<cv::Vec3b>(h,w);
-        if (_newframe->_fg_mask.at<uchar>(h,w)==0)
-        {
-          for (int i=0;i<3;i++)
-          {
-            bgr[i] = (uchar)bgr[i]*0.2;
-          }
-        }
-      }
-    }
-    drawPose6DOnImage(color_viz, ob_in_cam, _K, 0.05f, 2, cv::Point(5, 60));
-    cv::putText(color_viz,_newframe->_id_str,{5,30},cv::FONT_HERSHEY_PLAIN,2,{255,0,0},1,8,false);
-
-
-    cv::imwrite(debug_dir+"/color_viz/"+_newframe->_id_str+"_color_viz.jpg",color_viz,{CV_IMWRITE_JPEG_QUALITY, 80});
-    cout<<"here::::::"<<debug_dir+"/color_viz/"+_newframe->_id_str+"_color_viz.jpg"<<endl;
-    cv::imwrite(out_dir+"color_viz.jpg",color_viz,{CV_IMWRITE_JPEG_QUALITY, 80});
-
-    const std::string raw_dir = debug_dir+"/color_raw/";
-    if (!boost::filesystem::exists(raw_dir))
-    {
-      system(std::string("mkdir -p "+raw_dir).c_str());
-    }
-    cv::imwrite(raw_dir+_newframe->_id_str+"_color_raw.png",_newframe->_color);
-  }
-}
 
 void Bundler::saveNewframeResult()
 {
