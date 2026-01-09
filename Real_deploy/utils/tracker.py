@@ -6,21 +6,24 @@
 @Copyright：©2024-2026 ShanghaiTech University-RIMLAB
 """
 import json
-import time
 import math
-import zmq
-import numpy as np
+import time
+
 import cv2
+import numpy as np
+import zmq
 
 from Active.AzureKinectDK.Azure_camera import AzureKinectDK
 from Real_deploy.utils.sam2_class import SamSegmenter
 
+
 class Tracker:
     def __init__(self,
-                 axis_len=0.05, k4a_color_res = "720P", k4a_depth_mode = "NFOV_UNBINNED", k4a_fps = 30,
+                 axis_len=0.05, k4a_color_res="720P", k4a_depth_mode="NFOV_UNBINNED", k4a_fps=30,
                  bundletrack_addr="tcp://127.0.0.1:5550",
-                 sam_model="sam_model/sam2.1_hiera_tiny.pt", sam_config="configs/sam2.1/sam2.1_hiera_t.yaml", device="cuda",
-                    use_amp = True, show_tracker=True,
+                 sam_model="sam_model/sam2.1_hiera_tiny.pt", sam_config="configs/sam2.1/sam2.1_hiera_t.yaml",
+                 device="cuda",
+                 use_amp=True, show_tracker=True,
                  ):
         # set AzureKinectDK camera
         self.axis_len = axis_len
@@ -32,7 +35,6 @@ class Tracker:
         self.camera.start_init()
         self.K = self.camera.K_color.astype(np.float32)
 
-
         # set bundletrack zmq
         self.bundletrack_addr = bundletrack_addr
         self.sock = self.make_client(addr=self.bundletrack_addr, timeout_ms=10000)
@@ -43,8 +45,8 @@ class Tracker:
         self.sam_config = sam_config
         self.device = device
         self.use_amp = use_amp
-        self.segmenter = SamSegmenter(checkpoint=self.sam_model, model_cfg=self.sam_config, device=self.device , use_amp=self.use_amp)
-
+        self.segmenter = SamSegmenter(checkpoint=self.sam_model, model_cfg=self.sam_config, device=self.device,
+                                      use_amp=self.use_amp)
 
         # tracking params
         self.init_done = False
@@ -57,7 +59,8 @@ class Tracker:
         self.win = "Azure Kinect DK + SAM2 (s:init ROI | r:reset | q:quit)"
         cv2.namedWindow(self.win, cv2.WINDOW_NORMAL)
 
-        self.fx, self.fy, self.cx, self.cy = float(self.K[0, 0]), float(self.K[1, 1]), float(self.K[0, 2]), float(self.K[1, 2])
+        self.fx, self.fy, self.cx, self.cy = float(self.K[0, 0]), float(self.K[1, 1]), float(self.K[0, 2]), float(
+            self.K[1, 2])
 
     def init_tracker(self):
         self.color, self.depth_mm = self.camera.get_k4a_frame(require_aligned_depth=True)
@@ -104,7 +107,8 @@ class Tracker:
 
             # print(f"[INIT] SAM ok. infer={infer_ms:.1f}ms, mask_pixels={int(mask01.sum())}")
 
-            center3d = self.compute_center3d_from_mask_depth_mm(self.mask01, self.depth_mm, self.fx, self.fy, self.cx, self.cy)
+            center3d = self.compute_center3d_from_mask_depth_mm(self.mask01, self.depth_mm, self.fx, self.fy, self.cx,
+                                                                self.cy)
             self.has_init = (center3d is not None)
             self.ob_in_cam = self.make_ob_in_cam_from_center(center3d) if self.has_init else None
             if self.has_init:
@@ -161,8 +165,8 @@ class Tracker:
 
                 if key == ord('q'):
                     return "quit"
-            self.box_xyxy = self.prev_box_xyxy if self.prev_box_xyxy is not None else [0, 0, self.color.shape[1] - 1, self.color.shape[0] - 1]
-
+            self.box_xyxy = self.prev_box_xyxy if self.prev_box_xyxy is not None else [0, 0, self.color.shape[1] - 1,
+                                                                                       self.color.shape[0] - 1]
 
             try:
                 t0 = time.time()
@@ -200,7 +204,6 @@ class Tracker:
 
             # print(f"[SEND] i={i:06d} ok={resp.get('ok')} infer_ms={infer_ms:.1f} send_cost={cost:.3f}s")
             self.i += 1
-
 
     def make_client(self, addr: str = "tcp://127.0.0.1:5550", timeout_ms: int = 10000):
         ctx = zmq.Context.instance()
@@ -313,17 +316,16 @@ class Tracker:
         y1 = min(mask01.shape[0] - 1, y1 + pad)
         return [x0, x1, y0, y1]
 
-
     def send_frame_with_sock(self,
-            sock,
-            color_bgr: np.ndarray,  # uint8 HxWx3
-            depth_mm: np.ndarray,  # uint16 HxW
-            mask: np.ndarray | None = None,  # uint8 HxW (0/1 or 0/255)
-            id_str: str = "000000",
-            roi=None,  # [x0,x1,y0,y1]
-            ob_in_cam: np.ndarray | None = None,
-            has_init: bool = False,
-    ):
+                             sock,
+                             color_bgr: np.ndarray,  # uint8 HxWx3
+                             depth_mm: np.ndarray,  # uint16 HxW
+                             mask: np.ndarray | None = None,  # uint8 HxW (0/1 or 0/255)
+                             id_str: str = "000000",
+                             roi=None,  # [x0,x1,y0,y1]
+                             ob_in_cam: np.ndarray | None = None,
+                             has_init: bool = False,
+                             ):
         H, W = color_bgr.shape[:2]
         assert depth_mm.shape[:2] == (H, W)
 
@@ -384,4 +386,3 @@ if __name__ == '__main__':
             quit = tracker.init_tracker()
             if quit == "quit":
                 break
-
