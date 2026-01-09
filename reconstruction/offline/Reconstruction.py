@@ -287,7 +287,7 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Active",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/AzureKinectDK",
                     help="debug_dir that contains keyframes/")
     ap.add_argument("--K_path", type=str,
                     default="/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/cam_K_A.txt",
