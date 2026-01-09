@@ -363,7 +363,17 @@ class HardwarePlayer(object):
         listener.daemon = True
         listener.start()
 
-    def deploy(self):
+    def get_axis(self, axis=None):
+        if axis is None:
+            self.active_key = None
+            self.is_rotating = False
+        else:
+            print(f"\n--- Starting axis '{axis}' rotating. ---")
+            self.active_key = axis
+            self.target_axis = str(axis)
+            self.is_rotating = True
+
+def deploy(self):
         leap = LeapHand()
         leap.leap_dof_lower = self.leap_dof_lower.cpu().numpy()
         leap.leap_dof_upper = self.leap_dof_upper.cpu().numpy()
@@ -487,9 +497,12 @@ class HardwarePlayer(object):
 
         self.active_player = self.players[self.rotation_axis]
 
+
 @hydra.main(config_name='config', config_path='cfg')
 def main(config: DictConfig):
     agent = HardwarePlayer(config)
+    agent.init()
+    agent.get_axis("x")
     agent.restore_all_models()
     agent.deploy()
 
