@@ -1,6 +1,3 @@
-import os
-os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
-
 import sys
 from types import ModuleType
 import torch
@@ -34,10 +31,10 @@ from rl_games.torch_runner import Runner, _override_sigma, _restore
 from rl_games.algos_torch import model_builder
 from isaacgymenvs.learning import amp_continuous, amp_models, amp_network_builder, amp_players
 from isaacgymenvs.hardware_controller import LeapHand 
+import queue
 
 try:
     from torch.serialization import add_safe_globals
-    # 兼容 numpy 1.x 和 2.x
     import numpy.core.multiarray as _ncm
     add_safe_globals([_ncm.scalar])
 except Exception:
@@ -48,159 +45,6 @@ def to_torch(x, device='cuda'):
 
 def unscale(x, lower, upper):
     return (2.0 * x - upper - lower) / (upper - lower)
-
-contact_data_norm = np.zeros((16,16))
-THRESHOLD = 5
-NOISE_SCALE = 5
-latest_tactile_tensor = torch.zeros(16)
-tactile_lock = threading.Lock()
-raw_data_lock = threading.Lock()
-vis_exit_flag = False
-flag = False
-
-def readThread(serDev):
-    global contact_data_norm, flag
-    data_tac = []
-    num = 0
-    t1 = 0
-    backup = None
-    flag = False
-    current = None
-
-
-    EXPECTED_ROWS = 16
-    EXPECTED_COLS = 16
-
-    # --- Initialization phase: collect many frames to compute median ---
-    while True:
-        if serDev.in_waiting > 0:
-            try:
-                line = serDev.readline().decode('utf-8').strip()
-            except Exception:
-                line = ""
-            if len(line) < 10:
-                if current is not None and len(current) == EXPECTED_ROWS:
-                    try:
-                        arr = np.asarray(current, dtype=float)
-                    except Exception as e:
-                        print("Warning: cannot convert current to float array:", e)
-                        current = []
-                        continue
-                    if arr.shape == (EXPECTED_ROWS, EXPECTED_COLS):
-                        backup = arr.copy()
-                        if t1 != 0:
-                            print("fps", 1.0 / (time.time() - t1))
-                        t1 = time.time()
-                        data_tac.append(backup)
-                        num += 1
-                        if num > 30:
-                            break
-                    else:
-                        print("Skipped frame with unexpected shape:", arr.shape)
-                current = []
-                continue
-
-            if current is not None:
-                str_values = line.split()
-                try:
-                    int_values = [int(val) for val in str_values]
-                except ValueError:
-                    current.append([0] * EXPECTED_COLS)
-                    continue
-                if len(int_values) != EXPECTED_COLS:
-                    if len(int_values) < EXPECTED_COLS:
-                        int_values = int_values + [0] * (EXPECTED_COLS - len(int_values))
-                    else:
-                        int_values = int_values[:EXPECTED_COLS]
-                current.append(int_values)
-    if len(data_tac) == 0:
-        raise RuntimeError("No valid frames collected for median computation.")
-    try:
-        data_tac_stack = np.stack(data_tac, axis=0)   # shape (N,16,16)
-    except Exception as e:
-        print("Error stacking frames for median:", e)
-        for i, f in enumerate(data_tac):
-            print(i, type(f), getattr(f, "shape", None))
-        raise
-
-    median = np.median(data_tac_stack, axis=0).astype(float)  # shape (16,16)
-    flag = True
-    print("Finish Initialization!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
-    while True:
-        if serDev.in_waiting > 0:
-            try:
-                line = serDev.readline().decode('utf-8').strip()
-            except Exception:
-                line = ""
-            if len(line) < 10:
-                if current is not None and len(current) == EXPECTED_ROWS:
-                    try:
-                        backup = np.asarray(current, dtype=float)
-                    except Exception as e:
-                        print("Warning: cannot convert current to float array (runtime):", e)
-                        backup = None
-                current = []
-                if backup is not None:
-                    if not isinstance(backup, np.ndarray):
-                        backup = np.asarray(backup, dtype=float)
-                    if not isinstance(median, np.ndarray):
-                        median = np.asarray(median, dtype=float)
-
-                    if backup.shape == median.shape:
-                        try:
-                            contact_data = backup - median - THRESHOLD
-                        except Exception as e:
-                            print("Error subtracting arrays:", e)
-                            contact_data = np.asarray([[float(backup[i,j]) - float(median[i,j]) - THRESHOLD
-                                                        for j in range(min(backup.shape[1], median.shape[1]))]
-                                                       for i in range(min(backup.shape[0], median.shape[0]))], dtype=float)
-                    else:
-                        min_rows = min(backup.shape[0], median.shape[0])
-                        min_cols = min(backup.shape[1], median.shape[1])
-                        contact_data = backup[:min_rows, :min_cols] - median[:min_rows, :min_cols] - THRESHOLD
-                        if contact_data.shape != (EXPECTED_ROWS, EXPECTED_COLS):
-                            padded = np.zeros((EXPECTED_ROWS, EXPECTED_COLS), dtype=float)
-                            padded[:contact_data.shape[0], :contact_data.shape[1]] = contact_data
-                            contact_data = padded
-
-                    contact_data = np.clip(contact_data, 0, 100)
-
-                    if np.max(contact_data) < THRESHOLD:
-                        contact_data_norm = contact_data / NOISE_SCALE
-                    else:
-                        contact_data_norm = contact_data / np.max(contact_data)
-
-                    with raw_data_lock:
-                            contact_data_norm = contact_data_norm
-
-                continue
-
-            if current is not None:
-                str_values = line.split()
-                try:
-                    int_values = [int(val) for val in str_values]
-                except ValueError:
-                    int_values = [0] * EXPECTED_COLS
-                if len(int_values) != EXPECTED_COLS:
-                    if len(int_values) < EXPECTED_COLS:
-                        int_values = int_values + [0] * (EXPECTED_COLS - len(int_values))
-                    else:
-                        int_values = int_values[:EXPECTED_COLS]
-                current.append(int_values)
-                continue
-
-# PORT = "left_gripper_right_finger"
-PORT ='/dev/ttyUSB0'
-BAUD = 2000000
-# serDev = serial.Serial(PORT,2000000)
-serDev = serial.Serial(PORT,BAUD)
-exitThread = False
-serDev.flush()
-serialThread = threading.Thread(target=readThread, args=(serDev,))
-serialThread.daemon = True
-serialThread.start()
-
 
 def apply_gaussian_blur(contact_map, sigma=0.1):
     return gaussian_filter(contact_map, sigma=sigma)
@@ -213,58 +57,20 @@ def temporal_filter(new_frame, prev_frame, alpha=0.2):
     """
     return alpha * new_frame + (1 - alpha) * prev_frame
 
-def process_tactile_thread():
-    global latest_tactile_tensor, flag, contact_data_norm
-    WINDOW_WIDTH = 400
-    WINDOW_HEIGHT = 400
-    cv2.namedWindow("Contact Data_left", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("Contact Data_left", WINDOW_WIDTH, WINDOW_HEIGHT)
-    
-    prev_frame = np.zeros_like(contact_data_norm, dtype=float)
-    
-    print("Tactile processing thread started.")
-
-    while not vis_exit_flag:
-        if flag:
-            try:
-                with raw_data_lock:
-                    current_raw_snapshot = contact_data_norm.copy()
-
-                temp_filtered_data = temporal_filter(contact_data_norm, prev_frame)
-                prev_frame = temp_filtered_data
-
-                temp_filtered_data_scaled = (temp_filtered_data * 255).astype(np.uint8)
-                
-                patch_data = temp_filtered_data_scaled[8:12, 12:16]
-                
-                flat_data = patch_data.reshape(16, order='F')
-                flat_data = flat_data[[8, 6, 1, 10, 7, 4, 2, 9, 5, 3, 0, 11, 12, 15, 13, 14]]
-                
-                new_tensor = torch.from_numpy(np.where(flat_data > 50, 1, 0).astype(np.float32))
-                
-                with tactile_lock:
-                    latest_tactile_tensor = new_tensor
-
-                colormap = cv2.applyColorMap(flat_data, cv2.COLORMAP_VIRIDIS)
-                cv2.imshow("Contact Data_left", colormap)
-                cv2.waitKey(1) 
-                
-            except Exception as e:
-                print(f"Error in tactile processing thread: {e}")
-                time.sleep(0.1) 
-        else:
-            time.sleep(0.1)
-        
-        time.sleep(0.002)
-
-# Start the processing/visualization thread immediately
-vis_thread = threading.Thread(target=process_tactile_thread)
-vis_thread.daemon = True
-vis_thread.start()
-
 class HardwarePlayer(object):
     def __init__(self, config):
+        self.image_queue = queue.Queue(maxsize=1)
         self.config = OmegaConf.to_container(config, resolve=True)
+
+        self.contact_data_norm = np.zeros((16,16))
+        self.THRESHOLD =5
+        self.NOISE_SCALE =5
+
+        self.latest_tactile_tensor = torch.zeros(16)
+        self.tactile_lock = threading.Lock()
+        self.raw_data_lock = threading.Lock()
+        self.vis_exit_flag = False
+        self.flag = False
         
         self.num_hand_dofs = 16
         self.num_arm_dofs = 6 
@@ -298,10 +104,192 @@ class HardwarePlayer(object):
         
         self.post_init()
         self.target_axis = self.rotation_axis
-        # self.start_keyboard_listener()
         self.is_rotating = False   
         self.active_key = None
+        self.is_running = False
 
+        try:
+            self.serDev = serial.Serial('/dev/ttyUSB0', 2000000, timeout=1)
+            self.serDev.flush()
+            
+            self.serialThread = threading.Thread(target=self._readThread)
+            self.vis_thread = threading.Thread(target=self._process_tactile_thread)
+
+        except serial.SerialException as e:
+            print(f"无法打开串口: {e}")
+            raise
+
+    def _readThread(self):
+        data_tac = []
+        num = 0
+        t1 = 0
+        backup = None
+        self.flag = False
+        current = None
+
+
+        EXPECTED_ROWS = 16
+        EXPECTED_COLS = 16
+
+        # --- Initialization phase: collect many frames to compute median ---
+        while self.is_running:
+            if self.serDev.in_waiting > 0:
+                try:
+                    line = self.serDev.readline().decode('utf-8').strip()
+                except Exception:
+                    line = ""
+                if len(line) < 10:
+                    if current is not None and len(current) == EXPECTED_ROWS:
+                        try:
+                            arr = np.asarray(current, dtype=float)
+                        except Exception as e:
+                            print("Warning: cannot convert current to float array:", e)
+                            current = []
+                            continue
+                        if arr.shape == (EXPECTED_ROWS, EXPECTED_COLS):
+                            backup = arr.copy()
+                            if t1 != 0:
+                                print("fps", 1.0 / (time.time() - t1))
+                            t1 = time.time()
+                            data_tac.append(backup)
+                            num += 1
+                            if num > 30:
+                                break
+                        else:
+                            print("Skipped frame with unexpected shape:", arr.shape)
+                    current = []
+                    continue
+
+                if current is not None:
+                    str_values = line.split()
+                    try:
+                        int_values = [int(val) for val in str_values]
+                    except ValueError:
+                        current.append([0] * EXPECTED_COLS)
+                        continue
+                    if len(int_values) != EXPECTED_COLS:
+                        if len(int_values) < EXPECTED_COLS:
+                            int_values = int_values + [0] * (EXPECTED_COLS - len(int_values))
+                        else:
+                            int_values = int_values[:EXPECTED_COLS]
+                    current.append(int_values)
+        if len(data_tac) == 0:
+            raise RuntimeError("No valid frames collected for median computation.")
+        try:
+            data_tac_stack = np.stack(data_tac, axis=0)   # shape (N,16,16)
+        except Exception as e:
+            print("Error stacking frames for median:", e)
+            for i, f in enumerate(data_tac):
+                print(i, type(f), getattr(f, "shape", None))
+            raise
+
+        median = np.median(data_tac_stack, axis=0).astype(float)  # shape (16,16)
+        self.flag = True
+        print("Finish Initialization!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+        while self.is_running:
+            if self.serDev.in_waiting > 0:
+                try:
+                    line = self.serDev.readline().decode('utf-8').strip()
+                except Exception:
+                    line = ""
+                if len(line) < 10:
+                    if current is not None and len(current) == EXPECTED_ROWS:
+                        try:
+                            backup = np.asarray(current, dtype=float)
+                        except Exception as e:
+                            print("Warning: cannot convert current to float array (runtime):", e)
+                            backup = None
+                    current = []
+                    if backup is not None:
+                        if not isinstance(backup, np.ndarray):
+                            backup = np.asarray(backup, dtype=float)
+                        if not isinstance(median, np.ndarray):
+                            median = np.asarray(median, dtype=float)
+
+                        if backup.shape == median.shape:
+                            try:
+                                contact_data = backup - median - self.THRESHOLD
+                            except Exception as e:
+                                print("Error subtracting arrays:", e)
+                                contact_data = np.asarray([[float(backup[i,j]) - float(median[i,j]) - self.THRESHOLD
+                                                            for j in range(min(backup.shape[1], median.shape[1]))]
+                                                        for i in range(min(backup.shape[0], median.shape[0]))], dtype=float)
+                        else:
+                            min_rows = min(backup.shape[0], median.shape[0])
+                            min_cols = min(backup.shape[1], median.shape[1])
+                            contact_data = backup[:min_rows, :min_cols] - median[:min_rows, :min_cols] - self.THRESHOLD
+                            if contact_data.shape != (EXPECTED_ROWS, EXPECTED_COLS):
+                                padded = np.zeros((EXPECTED_ROWS, EXPECTED_COLS), dtype=float)
+                                padded[:contact_data.shape[0], :contact_data.shape[1]] = contact_data
+                                contact_data = padded
+
+                        contact_data = np.clip(contact_data, 0, 100)
+
+                        if np.max(contact_data) < self.THRESHOLD:
+                            self.contact_data_norm = contact_data / self.NOISE_SCALE
+                        else:
+                            self.contact_data_norm = contact_data / np.max(contact_data)
+
+                        with self.raw_data_lock:
+                                self.contact_data_norm = self.contact_data_norm
+
+                    continue
+
+                if current is not None:
+                    str_values = line.split()
+                    try:
+                        int_values = [int(val) for val in str_values]
+                    except ValueError:
+                        int_values = [0] * EXPECTED_COLS
+                    if len(int_values) != EXPECTED_COLS:
+                        if len(int_values) < EXPECTED_COLS:
+                            int_values = int_values + [0] * (EXPECTED_COLS - len(int_values))
+                        else:
+                            int_values = int_values[:EXPECTED_COLS]
+                    current.append(int_values)
+                    continue
+
+    def _process_tactile_thread(self):
+        print("Tactile processing thread started.")
+        prev_frame = np.zeros((16,16), dtype=float)
+
+        while not self.vis_exit_flag:
+            if self.flag:
+                try:
+                    with self.raw_data_lock:
+                        current_raw_snapshot = self.contact_data_norm.copy()
+
+                    # --- All the image processing logic is still here ---
+                    temp_filtered_data = temporal_filter(current_raw_snapshot, prev_frame)
+                    prev_frame = temp_filtered_data
+                    temp_filtered_data_scaled = (temp_filtered_data * 255).astype(np.uint8)
+                    patch_data = temp_filtered_data_scaled[8:12, 12:16]
+                    flat_data = patch_data.reshape(16, order='F')
+                    flat_data = flat_data[[8, 6, 1, 10, 7, 4, 2, 9, 5, 3, 0, 11, 12, 15, 13, 14]]
+                    new_tensor = torch.from_numpy(np.where(flat_data > 50, 1, 0).astype(np.float32))
+                    
+                    with self.tactile_lock:
+                        self.latest_tactile_tensor = new_tensor
+
+                    colormap = cv2.applyColorMap(flat_data.astype(np.uint8), cv2.COLORMAP_VIRIDIS)
+                    
+                    # --- Instead of showing, put the result in the queue ---
+                    try:
+                        # Use non-blocking put to discard old frames if the GUI is slow
+                        self.image_queue.put_nowait(colormap)
+                    except queue.Full:
+                        # This is expected if the GUI loop is slower than the processing loop
+                        pass
+                        
+                except Exception as e:
+                    print(f"Error in tactile processing thread: {e}")
+            
+            # This thread no longer needs to sleep aggressively, 
+            # as it's just processing data as it comes.
+            time.sleep(0.01)
+
+        print("Tactile processing thread exited.")
 
     def post_init(self):
         arm_hand_dof_default_pos = []
@@ -322,25 +310,41 @@ class HardwarePlayer(object):
 
     def get_dof_limits(self):
         lower = [-1.0470, -0.3140, -0.5060, -0.3660, -1.0470, -0.3140, -0.5060, -0.3660,
-                 -1.0470, -0.3140, -0.5060, -0.3660, -0.3490, -0.4700, -1.2000, -1.3400]
+         -1.0470, -0.3140, -0.5060, -0.3660, -0.3490, -0.4700, -1.2000, -1.3400]
         upper = [1.0470, 2.2300, 1.8850, 2.0420, 1.0470, 2.2300, 1.8850, 2.0420, 1.0470,
-                 2.2300, 1.8850, 2.0420, 2.0940, 2.4430, 1.9000, 1.8800]
+         2.2300, 1.8850, 2.0420, 2.0940, 2.4430, 1.9000, 1.8800]
         
         self.leap_dof_lower = self.real_to_sim(to_torch(lower, device=self.device).unsqueeze(0)).squeeze()
         self.leap_dof_upper = self.real_to_sim(to_torch(upper, device=self.device).unsqueeze(0)).squeeze()
 
-
     def get_axis(self, axis=None):
-        if axis is None:
-            self.active_key = None
-            self.is_rotating = False
+        if axis in ['x', 'y', 'z']:
+            if self.active_key is None:
+                self.active_key = axis       
+                self.target_axis = axis   
+                self.is_rotating = True
         else:
+            self.active_key = None    
+            self.is_rotating = False 
 
-            self.active_key = axis
-            self.target_axis = str(axis)
-            self.is_rotating = True
+    def start_deployment(self):
+        """
+        Starts the main deployment loop in a non-daemon background thread.
+        """
+        if self.is_running:
+            print("Deployment is already running.")
+            return
+    
+        self._deploy_thread = threading.Thread(target=self.deploy)
+        self._deploy_thread.start()
+        print("Deployment thread has been started in the background.")
 
     def deploy(self):
+        self.is_running = True
+        self.vis_exit_flag = False
+        self.serialThread.start()
+        self.vis_thread.start()
+
         leap = LeapHand()
         leap.leap_dof_lower = self.leap_dof_lower.cpu().numpy()
         leap.leap_dof_upper = self.leap_dof_upper.cpu().numpy()
@@ -354,27 +358,38 @@ class HardwarePlayer(object):
         initial_command = self.arm_hand_dof_default_pos.cpu().numpy()[6:22]
         for _ in range(hz * 2):
             leap.command_joint_position(initial_command)
+            obses, _ = leap.poll_joint_position()
             time.sleep(self.control_dt)
 
         obses, _ = leap.poll_joint_position()
         obses = to_torch(obses, device=self.device)
         
-        last_obs_buf = torch.zeros((1, self.n_obs_dim_single_frame), device=self.device)
-        last_action = torch.zeros(1, self.num_total_dofs, device=self.device)
+        last_obs_buf = torch.zeros((1, self.n_obs_dim_single_frame), device=self.device, dtype=torch.float)
+        last_action = torch.zeros(1, self.num_total_dofs, dtype=torch.float, device=self.device)
         prev_target = torch.zeros(1, self.num_total_dofs, device=self.device)
         prev_target[0, 6:] = obses.clone() 
 
         last_obs_buf[0, 6:22] = unscale(obses, self.leap_dof_lower, self.leap_dof_upper)
-        last_obs_buf[0, 29:45] = last_obs_buf[0, 6:22].clone()
-        
+        last_obs_buf[0, 29:45] = unscale(prev_target[0, 6:], self.leap_dof_lower, self.leap_dof_upper)
+
+        tactile_tensor = torch.zeros(16, device=self.device)
+        if self.flag:
+            with self.tactile_lock:
+                tactile_tensor = self.latest_tactile_tensor.to(self.device)
+
+        # tactile sensor data
+        last_obs_buf[0, 45:61] = tactile_tensor
+
+        # [61:85]: 旋转轴 (24维)
+        last_obs_buf[0, 61:85] = self.spin_axis[self.rotation_axis].repeat(1, 8)
+
         obs_buf = last_obs_buf.repeat(1, self.n_stack)
 
         if self.active_player.is_rnn:
             self.active_player.init_rnn()
 
         print("Start deployment loop...")
-        while True:
-
+        while self.is_running:
             loop_start_time = time.perf_counter()
 
             if self.target_axis != self.rotation_axis:
@@ -393,16 +408,14 @@ class HardwarePlayer(object):
                 last_obs_buf[0, 6:22] = unscaled_hand_pos
                 last_obs_buf[0, 29:45] = unscaled_hand_pos 
                 tactile_tensor = torch.zeros(16, device=self.device)
-                if flag:
-                    with tactile_lock:
-                        tactile_tensor = latest_tactile_tensor.to(self.device)
+                if self.flag:
+                    with self.tactile_lock:
+                        tactile_tensor = self.latest_tactile_tensor.to(self.device)
                 last_obs_buf[0, 45:61] = tactile_tensor
                 last_obs_buf[0, 61:85] = self.spin_axis[self.rotation_axis].repeat(1, 8)
                 obs_buf = last_obs_buf.repeat(1, self.n_stack)
 
                 last_action.zero_()
-                
-                print(f"Model for axis '{self.rotation_axis}' is now active.")
 
             if self.is_rotating:
                 action = self.active_player.get_action(obs_buf, True)
@@ -416,25 +429,44 @@ class HardwarePlayer(object):
             target[0, 6:] = torch.clamp(target[0, 6:], self.leap_dof_lower, self.leap_dof_upper)
             
             leap.command_joint_position(target[0, 6:].cpu().numpy())
-
+            elapsed_time = time.perf_counter() - loop_start_time  
+            sleep_time = self.control_dt - elapsed_time
+            if sleep_time > 0:
+                time.sleep(sleep_time)
             obses, _ = leap.poll_joint_position()
             obses = to_torch(obses, device=self.device)
   
             last_obs_buf.fill_(0)
             last_obs_buf[0, 6:22] = unscale(obses, self.leap_dof_lower, self.leap_dof_upper)
             last_obs_buf[0, 29:45] = unscale(target[0, 6:], self.leap_dof_lower, self.leap_dof_upper)
-            with tactile_lock:
-                last_obs_buf[0, 45:61] = latest_tactile_tensor.to(self.device)
+            with self.tactile_lock:
+                last_obs_buf[0, 45:61] = self.latest_tactile_tensor.to(self.device)
             last_obs_buf[0, 61:85] = self.spin_axis[self.rotation_axis].repeat(1, 8)
             
             obs_buf = torch.cat((last_obs_buf, obs_buf[:, :-self.n_obs_dim_single_frame]), dim=-1)
+            obs_buf = obs_buf.float()
             
             prev_target = target.clone()
             last_action = action.clone()
 
-            sleep_time = self.control_dt - (time.perf_counter() - loop_start_time)
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+    def stop(self):
+        print("Stopping all threads and closing resources...")
+        self.is_running = False
+        self.vis_exit_flag = True
+
+        if hasattr(self, 'serialThread') and self.serialThread.is_alive():
+            self.serialThread.join()
+        if hasattr(self, 'vis_thread') and self.vis_thread.is_alive():
+            self.vis_thread.join()
+
+        if hasattr(self, '_deploy_thread') and self._deploy_thread.is_alive():
+            self._deploy_thread.join()
+        
+        if hasattr(self, 'serDev') and self.serDev.is_open:
+            self.serDev.close()
+            print("Serial port closed.")
+        
+        print("Cleanup complete.")
 
     def restore_all_models(self): 
         model_builder.register_model('continuous_amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network))
@@ -465,14 +497,44 @@ class HardwarePlayer(object):
 
         self.active_player = self.players[self.rotation_axis]
 
-
 @hydra.main(config_name='config', config_path='cfg')
 def main(config: DictConfig):
-    agent = HardwarePlayer(config)
-    # agent.init()
-    agent.get_axis("x")
-    agent.restore_all_models()
-    agent.deploy()
+    agent = None
+    WINDOW_NAME = "Contact Data_left"
+    try:
+        agent = HardwarePlayer(config)
+        agent.restore_all_models()
+        agent.start_deployment()
+
+        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(WINDOW_NAME, 400, 400)
+
+        agent.get_axis('z')
+        while True:
+            try:
+                image = agent.image_queue.get_nowait()
+                cv2.imshow(WINDOW_NAME, image)
+            except queue.Empty:
+                pass     
+            key = cv2.waitKey(20) & 0xFF  # Use a small delay like 20ms
+            if key == ord('q'):
+                print("[Main Thread] 'q' key pressed. Shutting down.")
+                break
+            if not agent._deploy_thread.is_alive():
+                print("[Main Thread] Deployment thread has unexpectedly stopped. Exiting.")
+                break
+            agent.get_axis()
+
+
+    except KeyboardInterrupt:
+        print("\n[Main Thread] Ctrl+C detected. Shutting down all threads gracefully...")
+
+    finally:
+        cv2.destroyAllWindows()
+        if agent:
+            agent.stop()
+        print("[Main Thread] Program has exited cleanly.")
+
 
 if __name__ == '__main__':
     main()
