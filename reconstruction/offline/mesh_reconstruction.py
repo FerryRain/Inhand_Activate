@@ -5,19 +5,6 @@
 @Time：2025 11/29/25 12:11 AM
 @Copyright：©2024-2025 ShanghaiTech University-RIMLAB
 """
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-从带有法向量的点云重建三角网格（mesh）。
-
-支持输入：
-- .ply / .pcd / .xyz / .xyzn / .xyzrgb 等 Open3D 支持的点云格式
-  若文件中已经包含 normals，则直接使用；
-  若不包含，可选择估计 normal。
-- .npy：形状 (N, 6)，前 3 列为 xyz，后 3 列为 nx, ny, nz
-
-默认采用 Poisson Surface Reconstruction。
-"""
 
 import argparse
 import os
@@ -43,14 +30,12 @@ def load_point_cloud(path, estimate_normal_if_missing=False, voxel_size=None):
         pcd.normals = o3d.utility.Vector3dVector(nrm)
 
     else:
-        # 直接用 Open3D 读点云
         pcd = o3d.io.read_point_cloud(path)
         if pcd.is_empty():
             raise RuntimeError(f"Failed to load point cloud from {path}")
 
         if not pcd.has_normals() and estimate_normal_if_missing:
             print("[Info] No normals in file, estimating normals...")
-            # 可选先下采样再估计
             if voxel_size is not None and voxel_size > 0:
                 pcd = pcd.voxel_down_sample(voxel_size)
                 print(f"[Info] Downsampled to {len(pcd.points)} points.")
@@ -72,12 +57,6 @@ def load_point_cloud(path, estimate_normal_if_missing=False, voxel_size=None):
 
 
 def poisson_reconstruction(pcd, depth=9, density_thresh=0.01):
-    """
-    使用 Poisson 重建 mesh，并根据节点 density 做一次简单裁剪。
-
-    depth: 八叉树深度，越大细节越多，速度和内存开销也更大。
-    density_thresh: 丢弃 density 较小的一部分点（通常是噪点和外部伪面）。
-    """
     print("[Info] Start Poisson reconstruction...")
     mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
         pcd, depth=depth
@@ -89,9 +68,7 @@ def poisson_reconstruction(pcd, depth=9, density_thresh=0.01):
         f"density range: [{densities.min():.4f}, {densities.max():.4f}]"
     )
 
-    # 根据 density 做简单裁剪，去掉非常稀疏的区域
     if density_thresh is not None:
-        # 例如保留密度高于某个分位数的点
         thr = np.quantile(densities, density_thresh)
         print(f"[Info] Density threshold (quantile={density_thresh}): {thr:.4f}")
         keep_idx = np.where(densities > thr)[0]

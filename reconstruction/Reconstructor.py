@@ -68,8 +68,8 @@ class Reconstructor:
 
     def __init__(
         self,
-        debug_dir: str = "/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/AzureKinectDK",
-        K_path: str = "/home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/results/cam_K_A.txt",
+        debug_dir: str = "/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/AzureKinectDK",
+        K_path: str = "/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",
         cfg: Optional[ReconstructionConfig] = None,
     ):
         self.debug_dir = debug_dir
