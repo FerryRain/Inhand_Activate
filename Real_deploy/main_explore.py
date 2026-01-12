@@ -6,12 +6,17 @@
 @Copyright：©2024-2026 ShanghaiTech University-RIMLAB
 """
 from reconstruction.Reconstructor import Reconstructor
-from Real_deploy.utils.tracker import Tracker
+from Tracking.tracker import Tracker
+# from Tracking.tracker_fast_sam import Tracker
+# from Tracking.sam3_tracking import Tracker
+from Active.NBV_gpis import GPISNBVv2
 
 if __name__ == '__main__':
     tracker = Tracker()
     recon = Reconstructor()
+    est = GPISNBVv2()
 
+    pcd = None
     while True:
         if tracker.init_done:
             key = tracker.tracking()
@@ -21,15 +26,12 @@ if __name__ == '__main__':
             if key == "reconstruct":
                 pcd = recon.reconstruct()
                 recon.show()
+            if key == "active":
+                pcd = recon.reconstruct()
+                recon.show()
+                nbv = est.estimate(pcd, seed=0, verbose=True)
+                est.viz()
         else:
             quit = tracker.init_tracker()
             if quit == "quit":
                 break
-
-
-    pcd = recon.reconstruct()
-    recon.show()
-    recon.save_color("./color.ply")
-    recon.save_xyz_ascii("./xyz_ascii.ply")
-
-    # recon.reconstruct(save_color="./color.ply", save_xyz_ascii="./xyz_ascii.ply")
