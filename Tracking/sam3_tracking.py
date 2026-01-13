@@ -631,6 +631,17 @@ class Tracker:
 
     def make_ob_in_cam_from_center(self, center3d_m):
         T = np.eye(4, dtype=np.float32)
+        cos = np.cos(115.0 * math.pi / 180.0)
+        sin = np.sin(115.0 * math.pi / 180.0)
+        rotation_x = np.array(
+            [
+                [1, 0, 0],
+                [0, cos, -sin],
+                [0, sin, cos],
+            ],
+            dtype=np.float32,
+        )
+        T[:3, :3] = rotation_x
         T[:3, 3] = center3d_m.reshape(3)
         return T
 
