@@ -44,7 +44,7 @@ def auto_axis_size(pcd: o3d.geometry.PointCloud) -> float:
 
 def main():
     parser = argparse.ArgumentParser(description="Simple point cloud viewer (Open3D).")
-    parser.add_argument("-i", "--input", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/data/cube/GT/ply/GT_cube.ply", help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
+    parser.add_argument("-i", "--input", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/purple_cube_01/pcd/recon_0_000198_xyz_ascii.ply", help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
 
     parser.add_argument("--voxel", type=float, default=0.0, help="Voxel downsample size (e.g. 0.002). 0 = disable.")
     parser.add_argument("--random", type=int, default=0, help="Random sample N points (e.g. 200000). 0 = disable.")

@@ -27,7 +27,7 @@ class ReconstructionConfig:
     depth_trunc: float = 2.0
 
     # mask
-    mask_erode_k: int = 3
+    mask_erode_k: int = 5
     mask_erode_iter: int = 1
     mask_open_k: int = 0
     mask_close_k: int = 0
@@ -572,13 +572,15 @@ class Reconstructor:
 
 # ---------------- Example ----------------
 if __name__ == "__main__":
-    recon = Reconstructor()
+    # recon = Reconstructor(debug_dir="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/inhand_y")
+    recon = Reconstructor(
+        debug_dir="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/AzureKinectDK")
     recon.reconstruct(visualize=False, verbose=True)  # default: no saving
     recon.show()
 
 
     # If you want saving:
-    # recon.save_color("./reconstruction_clean_color.ply")
+    recon.save_color("./inhand_y.ply")
     # recon.save_xyz_ascii("./reconstruction_xyz_ascii.ply")
     # or
     # recon.reconstruct(save_color="./color.ply", save_xyz_ascii="./xyz_ascii.ply")

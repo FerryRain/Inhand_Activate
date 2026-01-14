@@ -1,7 +1,15 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""
+@FileName：compare_all_time.py
+@Description：
+@Author：Ferry
+@Time：2026 1/13/26 11:25 PM
+@Copyright：©2024-2026 ShanghaiTech University-RIMLAB
+"""
 
 import os
+import re
+import json
+import csv
 import argparse
 import numpy as np
 import open3d as o3d
@@ -68,14 +76,14 @@ def print_pcd_stats(name: str, pcd: o3d.geometry.PointCloud):
 def apply_scale(geom, s: float):
     if s == 1.0:
         return
-    if isinstance(geom, o3d.geometry.PointCloud) or isinstance(geom, o3d.geometry.TriangleMesh):
+    if isinstance(geom, (o3d.geometry.PointCloud, o3d.geometry.TriangleMesh)):
         geom.scale(float(s), center=(0, 0, 0))
 
 
 def apply_transform(geom, T: np.ndarray):
     if geom is None:
         return
-    if isinstance(geom, o3d.geometry.PointCloud) or isinstance(geom, o3d.geometry.TriangleMesh):
+    if isinstance(geom, (o3d.geometry.PointCloud, o3d.geometry.TriangleMesh)):
         geom.transform(T)
 
 
@@ -107,7 +115,6 @@ def maybe_auto_unit_to_meters(recon_pcd, gt_pcd, enable=True):
 
     # typical mm vs m mismatch ratio ~ 1000
     if ratio > 200.0:
-        # scale the larger one down
         if dr > dg:
             return 0.001, 1.0
         else:
@@ -169,10 +176,10 @@ def all_right_handed_axis_mats(V):
         (2, 0, 1), (2, 1, 0),
     ]
     signs = [
-        ( 1,  1,  1),
-        ( 1, -1, -1),
-        (-1,  1, -1),
-        (-1, -1,  1),
+        (1, 1, 1),
+        (1, -1, -1),
+        (-1, 1, -1),
+        (-1, -1, 1),
     ]
     for p in perms:
         P = V[:, p]
@@ -247,14 +254,12 @@ def icp_multiscale(src_full, tgt_full, init_T, voxel_base, iters=(60, 90)):
         src = preprocess_pcd(o3d.geometry.PointCloud(src_full), vx)
         tgt = preprocess_pcd(o3d.geometry.PointCloud(tgt_full), vx)
 
-        # normals for point-to-plane (on COPIES, safe)
         nr = max(2.0 * vx, 1e-3)
         estimate_normals_for_icp(src, nr)
         estimate_normals_for_icp(tgt, nr)
 
         max_corr = 2.5 * vx
 
-        # robust kernel if available
         try:
             loss = o3d.pipelines.registration.TukeyLoss(k=max_corr)
             est = o3d.pipelines.registration.TransformationEstimationPointToPlane(loss)
@@ -275,7 +280,7 @@ def icp_multiscale(src_full, tgt_full, init_T, voxel_base, iters=(60, 90)):
 
 
 # ============================================================
-# Fast NN (prefer Open3D core NNS; fallback to KDTree loops)
+# Fast NN (prefer Open3D core NNS; fallback)
 # ============================================================
 def nn_1_core(src_xyz: np.ndarray, dst_xyz: np.ndarray):
     src = o3d.core.Tensor(src_xyz.astype(np.float32))
@@ -311,7 +316,7 @@ def nn_1(src_xyz: np.ndarray, dst_xyz: np.ndarray, dst_pcd_for_fallback: o3d.geo
 
 
 # ============================================================
-# Metrics: PCD↔PCD (Accuracy / Completeness / CD / F-score / Normal Consistency)
+# Metrics: PCD↔PCD
 # ============================================================
 def fscore_from_dists(d_src_to_dst: np.ndarray, d_dst_to_src: np.ndarray, tau: float):
     P = float(np.mean(d_src_to_dst < tau)) if len(d_src_to_dst) > 0 else 0.0
@@ -351,9 +356,8 @@ def eval_pcd_pcd(rec_pcd, gt_pcd, taus_m, require_normals=True):
     rec_xyz = np.asarray(rec_pcd.points, dtype=np.float64)
     gt_xyz = np.asarray(gt_pcd.points, dtype=np.float64)
 
-    # use Open3D built-in distances (KDTree)
-    d_rg = np.asarray(rec_pcd.compute_point_cloud_distance(gt_pcd), dtype=np.float64)  # recon->gt
-    d_gr = np.asarray(gt_pcd.compute_point_cloud_distance(rec_pcd), dtype=np.float64)  # gt->recon
+    d_rg = np.asarray(rec_pcd.compute_point_cloud_distance(gt_pcd), dtype=np.float64)
+    d_gr = np.asarray(gt_pcd.compute_point_cloud_distance(rec_pcd), dtype=np.float64)
 
     acc = float(d_rg.mean()) if d_rg.size else 0.0
     comp = float(d_gr.mean()) if d_gr.size else 0.0
@@ -417,7 +421,7 @@ def occupancy_from_mesh(scene: o3d.t.geometry.RaycastingScene, points_xyz: np.nd
 
 
 # ============================================================
-# Metrics: Mesh↔Mesh (surface) / PCD→Mesh / IoU
+# Metrics: Mesh↔Mesh / PCD→Mesh / IoU
 # ============================================================
 def eval_mesh_mesh(rec_mesh, gt_mesh, mesh_samples, sample_method, taus_m):
     scene_gt = make_scene(gt_mesh)
@@ -529,80 +533,48 @@ def eval_mesh_iou(rec_mesh, gt_mesh, voxel_size, margin, max_points=5_000_000):
 
 
 # ============================================================
-# Pretty print
+# Pretty print helpers
 # ============================================================
 def fmt_m_mm(x):
     return f"{x:.6f} m ({x*1000.0:.3f} mm)"
 
 
-def print_fscore(fs_dict):
-    for tau, v in fs_dict.items():
-        print(f"  @tau={tau*1000:.1f}mm: P={v['precision']:.4f} R={v['recall']:.4f} F={v['fscore']:.4f}")
+# ============================================================
+# Batch utils
+# ============================================================
+def parse_id_from_recon_normal_name(path: str) -> int:
+    # recon_0_000030_xyz_normal.ply
+    name = os.path.basename(path)
+    m = re.match(r"recon_0_(\d+)_xyz_normal\.ply$", name)
+    return int(m.group(1)) if m else -1
 
 
-def print_normal_consistency(nc, name):
-    if nc is None:
-        print(f"{name}: (skipped)")
-        return
-    print(f"{name}: mean|cos|={nc['mean_abs_cos']:.4f}, mean_angle={nc['mean_angle_deg']:.2f}deg, "
-          f"<15deg={nc['pct_lt_15']:.4f}, <30deg={nc['pct_lt_30']:.4f}, pairs={nc['pairs']}")
+def default_paths_from_folders(result_dir: str, gt_dir: str):
+    gt_pcd = os.path.join(gt_dir, "ply", "GT_normal.ply")
+    gt_mesh = os.path.join(gt_dir, "mesh", "GT_mesh.stl")
+    normal_dir = os.path.join(result_dir, "normal")
+    mesh_dir = os.path.join(result_dir, "mesh")
+    return gt_pcd, gt_mesh, normal_dir, mesh_dir
 
 
 # ============================================================
-# Main
+# Single evaluation (core), returns dict
 # ============================================================
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--gt_pcd", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/GT_cube_normal.ply", help="GT point cloud (ply/pcd/xyz...)")
-    ap.add_argument("--gt_mesh", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/GT_cube.stl", help="GT mesh (stl/ply/obj...)")
-    ap.add_argument("--rec_pcd", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/cube.ply", help="Reconstructed point cloud")
-    ap.add_argument("--rec_mesh", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/cube_mesh.ply", help="Reconstructed mesh")
-
-    # sampling for alignment / mesh metrics
-    ap.add_argument("--align_sample_n", type=int, default=200000,
-                    help="If you choose alignment from mesh, number of samples")
-    ap.add_argument("--align_sample_method", choices=["uniform", "poisson"], default="poisson")
-    ap.add_argument("--mesh_metric_samples", type=int, default=200000,
-                    help="Surface samples per mesh for mesh↔mesh metrics")
-    ap.add_argument("--mesh_sample_method", choices=["uniform", "poisson"], default="poisson")
-
-    # autosize defaults ON
-    ap.add_argument("--no_auto_unit", action="store_true",
-                    help="Disable auto unit (mm<->m) heuristic")
-    ap.add_argument("--no_auto_voxel", action="store_true",
-                    help="Disable auto voxel from recon median NN")
-
-    # manual extra scales (rarely needed)
-    ap.add_argument("--rec_scale", type=float, default=1.0, help="multiply recon coordinates by this factor first")
-    ap.add_argument("--gt_scale", type=float, default=1.0, help="multiply gt coordinates by this factor first")
-
-    # alignment base voxel (used if auto_voxel disabled)
-    ap.add_argument("--voxel", type=float, default=0.003, help="base voxel for alignment (m) when auto_voxel disabled")
-
-    # evaluation downsample voxel
-    ap.add_argument("--eval_voxel", type=float, default=0.002, help="downsample voxel for PCD metrics (m), 0 disables")
-
-    # thresholds
-    ap.add_argument("--thresholds_mm", type=str, default="2,5,10")
-
-    # IoU
-    ap.add_argument("--iou_voxel", type=float, default=0.005, help="voxel size for occupancy IoU (m)")
-    ap.add_argument("--iou_margin", type=float, default=0.01, help="bbox margin for occupancy IoU (m)")
-
-    # outputs
-    ap.add_argument("--save_T", type=str, default="", help="save final T (GT <- Recon)")
-    ap.add_argument("--save_aligned_rec_pcd", type=str, default="", help="save aligned recon pcd")
-    ap.add_argument("--save_aligned_rec_mesh", type=str, default="", help="save aligned recon mesh")
-    ap.add_argument("--vis", action="store_true")
-
-    args = ap.parse_args()
-    taus_m = [float(x.strip()) / 1000.0 for x in args.thresholds_mm.split(",") if x.strip()]
+def evaluate_one(
+    gt_pcd_path: str,
+    gt_mesh_path: str,
+    rec_pcd_path: str,
+    rec_mesh_path: str,
+    taus_m,
+    args,
+):
+    np.random.seed(int(args.seed))
 
     # load
-    gt_pcd = read_point_cloud(args.gt_pcd)
-    rec_pcd = read_point_cloud(args.rec_pcd)
-    gt_mesh = read_triangle_mesh(args.gt_mesh)
-    rec_mesh = read_triangle_mesh(args.rec_mesh)
+    gt_pcd = read_point_cloud(gt_pcd_path)
+    rec_pcd = read_point_cloud(rec_pcd_path)
+    gt_mesh = read_triangle_mesh(gt_mesh_path)
+    rec_mesh = read_triangle_mesh(rec_mesh_path)
 
     # manual scales first
     apply_scale(gt_pcd, args.gt_scale)
@@ -614,7 +586,7 @@ def main():
     d_rec = print_pcd_stats("RECON_PCD", rec_pcd)
     d_gt = print_pcd_stats("GT_PCD", gt_pcd)
 
-    # autosize unit to meters (mm<->m)
+    # autosize unit to meters
     s_rec, s_gt = maybe_auto_unit_to_meters(rec_pcd, gt_pcd, enable=(not args.no_auto_unit))
     if s_rec != 1.0 or s_gt != 1.0:
         print(f"[AUTO_UNIT] apply rec *= {s_rec}, gt *= {s_gt}")
@@ -638,7 +610,7 @@ def main():
         voxel = auto_voxel_from_recon(rec_pcd, enable=True, fallback=float(args.voxel))
         print(f"[AUTO_VOXEL] voxel={voxel:.6f} (from recon median NN)\n")
 
-    # alignment uses downsampled PCDs (stable)
+    # alignment uses downsampled PCDs
     src_ds = preprocess_pcd(o3d.geometry.PointCloud(rec_pcd), voxel)
     tgt_ds = preprocess_pcd(o3d.geometry.PointCloud(gt_pcd), voxel)
 
@@ -652,7 +624,7 @@ def main():
 
     # ICP refine
     print("[STEP] Multi-scale ICP refine ...")
-    T = icp_multiscale(rec_pcd, gt_pcd, T0, voxel_base=voxel, iters=(60, 90))
+    T = icp_multiscale(rec_pcd, gt_pcd, T0, voxel_base=voxel, iters=(args.icp_iter0, args.icp_iter1))
     print("\nFinal T (GT <- Recon):\n", T)
 
     # apply T to recon geometries
@@ -670,84 +642,68 @@ def main():
         rec_eval = preprocess_pcd(o3d.geometry.PointCloud(rec_pcd_aligned), 0.0)
         gt_eval = preprocess_pcd(o3d.geometry.PointCloud(gt_pcd), 0.0)
 
-    # ============================================================
-    # A) PCD ↔ PCD metrics
-    # ============================================================
-    print("\n================ A) PointCloud ↔ PointCloud ================")
+    report = {
+        "paths": {
+            "gt_pcd": gt_pcd_path,
+            "gt_mesh": gt_mesh_path,
+            "rec_pcd": rec_pcd_path,
+            "rec_mesh": rec_mesh_path,
+        },
+        "scales": {
+            "rec_scale_manual": float(args.rec_scale),
+            "gt_scale_manual": float(args.gt_scale),
+            "rec_scale_auto": float(s_rec),
+            "gt_scale_auto": float(s_gt),
+        },
+        "alignment": {
+            "voxel_base": float(voxel),
+            "T_gt_from_rec": T.tolist(),
+            "pca_init_nn_mean": float(err0),
+        },
+        "metrics": {}
+    }
+
+    # A) PCD↔PCD
     pcd_report = eval_pcd_pcd(rec_eval, gt_eval, taus_m=taus_m, require_normals=True)
-    print(f"Accuracy     (Recon→GT): {fmt_m_mm(pcd_report['accuracy_mean'])}")
-    print(f"Completeness (GT→Recon): {fmt_m_mm(pcd_report['completeness_mean'])}")
-    print(f"Chamfer L1: {fmt_m_mm(pcd_report['chamfer_l1'])}")
-    print(f"Chamfer L2: {pcd_report['chamfer_l2']:.10f} m^2")
-    print("F-score:")
-    print_fscore(pcd_report["fscore"])
-    print_normal_consistency(pcd_report["normal_consistency"], "Normal Consistency (all)")
-    for tau in taus_m:
-        print_normal_consistency(pcd_report["normal_consistency@tau"][tau], f"Normal Consistency (d< {tau*1000:.1f}mm)")
-    print("============================================================\n")
+    report["metrics"]["pcd_pcd"] = pcd_report
 
-    # ============================================================
-    # B) Mesh ↔ Mesh (surface) metrics
-    # ============================================================
-    print("================ B) Mesh ↔ Mesh (surface) ==================")
-    mesh_report = eval_mesh_mesh(
-        rec_mesh_aligned, gt_mesh,
-        mesh_samples=args.mesh_metric_samples,
-        sample_method=args.mesh_sample_method,
-        taus_m=taus_m
-    )
-    print(f"Accuracy     (RecMesh→GTMesh): {fmt_m_mm(mesh_report['accuracy_mean'])}")
-    print(f"Completeness (GTMesh→RecMesh): {fmt_m_mm(mesh_report['completeness_mean'])}")
-    print(f"Chamfer L1: {fmt_m_mm(mesh_report['chamfer_l1'])}")
-    print(f"Chamfer L2: {mesh_report['chamfer_l2']:.10f} m^2")
-    print("F-score:")
-    print_fscore(mesh_report["fscore"])
-    print("============================================================\n")
+    # B) Mesh↔Mesh
+    if not args.skip_mesh_metrics:
+        mesh_report = eval_mesh_mesh(
+            rec_mesh_aligned, gt_mesh,
+            mesh_samples=args.mesh_metric_samples,
+            sample_method=args.mesh_sample_method,
+            taus_m=taus_m
+        )
+        report["metrics"]["mesh_mesh"] = mesh_report
 
-    # ============================================================
-    # C) Point-to-mesh metrics
-    # ============================================================
-    print("================ C) Point-to-mesh ==========================")
-    recpcd_to_gtmesh = eval_pcd_mesh(rec_eval, gt_mesh, taus_m=taus_m)
-    gtpcd_to_recmesh = eval_pcd_mesh(gt_eval, rec_mesh_aligned, taus_m=taus_m)
+    # C) Point-to-mesh
+    if not args.skip_pcd_mesh:
+        recpcd_to_gtmesh = eval_pcd_mesh(rec_eval, gt_mesh, taus_m=taus_m)
+        gtpcd_to_recmesh = eval_pcd_mesh(gt_eval, rec_mesh_aligned, taus_m=taus_m)
+        report["metrics"]["pcd_to_mesh"] = {
+            "recon_pcd_to_gt_mesh": recpcd_to_gtmesh,
+            "gt_pcd_to_recon_mesh": gtpcd_to_recmesh,
+        }
 
-    print("[Recon PCD → GT Mesh]")
-    print(f"  mean: {fmt_m_mm(recpcd_to_gtmesh['mean_distance'])}")
-    print(f"  p50 : {fmt_m_mm(recpcd_to_gtmesh['p50'])}")
-    print(f"  p95 : {fmt_m_mm(recpcd_to_gtmesh['p95'])}")
-    for tau in taus_m:
-        print(f"  inlier(d<{tau*1000:.1f}mm): {recpcd_to_gtmesh['inlier_ratio'][tau]:.4f}")
+    # D) IoU
+    if not args.skip_iou:
+        iou_report = eval_mesh_iou(rec_mesh_aligned, gt_mesh, voxel_size=args.iou_voxel, margin=args.iou_margin)
+        report["metrics"]["iou"] = iou_report
 
-    print("\n[GT PCD → Recon Mesh]")
-    print(f"  mean: {fmt_m_mm(gtpcd_to_recmesh['mean_distance'])}")
-    print(f"  p50 : {fmt_m_mm(gtpcd_to_recmesh['p50'])}")
-    print(f"  p95 : {fmt_m_mm(gtpcd_to_recmesh['p95'])}")
-    for tau in taus_m:
-        print(f"  inlier(d<{tau*1000:.1f}mm): {gtpcd_to_recmesh['inlier_ratio'][tau]:.4f}")
-    print("============================================================\n")
+    # optional save aligned
+    if args.save_aligned:
+        out_aligned_pcd = args.save_aligned.replace("{id}", args.cur_id).replace("{type}", "pcd")
+        out_aligned_mesh = args.save_aligned.replace("{id}", args.cur_id).replace("{type}", "mesh")
+        os.makedirs(os.path.dirname(out_aligned_pcd), exist_ok=True)
+        o3d.io.write_point_cloud(out_aligned_pcd, rec_pcd_aligned, write_ascii=False)
+        o3d.io.write_triangle_mesh(out_aligned_mesh, rec_mesh_aligned, write_ascii=False)
+        report["outputs"] = {
+            "aligned_rec_pcd": out_aligned_pcd,
+            "aligned_rec_mesh": out_aligned_mesh,
+        }
 
-    # ============================================================
-    # D) IoU / Occupancy consistency
-    # ============================================================
-    print("================ D) Occupancy IoU ==========================")
-    iou_report = eval_mesh_iou(rec_mesh_aligned, gt_mesh, voxel_size=args.iou_voxel, margin=args.iou_margin)
-    print(f"voxel_size={iou_report['voxel_size']:.6f} m, margin={iou_report['margin']:.6f} m")
-    print(f"dims={iou_report['dims']}, total_points={iou_report['total_points']}")
-    print(f"intersection={iou_report['intersection']}, union={iou_report['union']}")
-    print(f"IoU={iou_report['iou']:.6f}")
-    print("============================================================\n")
-
-    # save
-    if args.save_T:
-        np.savetxt(args.save_T, T, fmt="%.10f")
-        print(f"[SAVED] T -> {args.save_T}")
-    if args.save_aligned_rec_pcd:
-        o3d.io.write_point_cloud(args.save_aligned_rec_pcd, rec_pcd_aligned, write_ascii=False)
-        print(f"[SAVED] aligned recon pcd -> {args.save_aligned_rec_pcd}")
-    if args.save_aligned_rec_mesh:
-        o3d.io.write_triangle_mesh(args.save_aligned_rec_mesh, rec_mesh_aligned, write_ascii=False)
-        print(f"[SAVED] aligned recon mesh -> {args.save_aligned_rec_mesh}")
-
+    # optional vis (single case only recommended)
     if args.vis:
         gt_vis = o3d.geometry.PointCloud(gt_pcd)
         rec_vis = o3d.geometry.PointCloud(rec_pcd_aligned)
@@ -758,6 +714,222 @@ def main():
         axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
         o3d.visualization.draw_geometries([axis, gt_vis, rec_vis], width=1400, height=900)
 
+    return report
+
+
+# ============================================================
+# Main (batch)
+# ============================================================
+def main():
+    ap = argparse.ArgumentParser()
+
+    ap.add_argument(
+        "--result_dir",
+        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001",
+        help="Folder containing normal/ and mesh/ subfolders",
+    )
+    ap.add_argument(
+        "--gt_dir",
+        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube/GT",
+        help="GT folder (contains mesh/GT_mesh.stl and ply/GT_normal.ply)",
+    )
+
+    # evaluate one id only (optional)
+    ap.add_argument("--id", type=int, default=-1, help="Only evaluate recon_0_{id:06d} if set >=0")
+
+    # sampling for mesh metrics
+    ap.add_argument("--mesh_metric_samples", type=int, default=200000)
+    ap.add_argument("--mesh_sample_method", choices=["uniform", "poisson"], default="poisson")
+
+    # autosize defaults ON
+    ap.add_argument("--no_auto_unit", action="store_true")
+    ap.add_argument("--no_auto_voxel", action="store_true")
+
+    # manual extra scales
+    ap.add_argument("--rec_scale", type=float, default=1.0)
+    ap.add_argument("--gt_scale", type=float, default=1.0)
+
+    # alignment base voxel (used if auto_voxel disabled)
+    ap.add_argument("--voxel", type=float, default=0.003, help="base voxel for alignment (m) when auto_voxel disabled")
+
+    # ICP iters
+    ap.add_argument("--icp_iter0", type=int, default=60)
+    ap.add_argument("--icp_iter1", type=int, default=90)
+
+    # evaluation downsample voxel
+    ap.add_argument("--eval_voxel", type=float, default=0.002, help="downsample voxel for PCD metrics (m), 0 disables")
+
+    # thresholds
+    ap.add_argument("--thresholds_mm", type=str, default="2,5,10")
+
+    # IoU
+    ap.add_argument("--iou_voxel", type=float, default=0.005)
+    ap.add_argument("--iou_margin", type=float, default=0.01)
+
+    # batch speed switches
+    ap.add_argument("--skip_iou", action="store_true", help="Skip IoU (very slow in batch)")
+    ap.add_argument("--skip_mesh_metrics", action="store_true", help="Skip mesh↔mesh surface metrics (slow)")
+    ap.add_argument("--skip_pcd_mesh", action="store_true", help="Skip point-to-mesh metrics")
+
+    # outputs
+    ap.add_argument("--out_dir", type=str, default="", help="Default: result_dir/eval")
+    ap.add_argument("--save_aligned", type=str, default="",
+                    help="If set, save aligned recon. Use template with {id} and {type}. "
+                         "Example: result_dir/eval/aligned/recon_0_{id}_{type}.ply")
+    ap.add_argument("--vis", action="store_true", help="Visualize (only recommended with --id)")
+
+    # reproducibility
+    ap.add_argument("--seed", type=int, default=0)
+
+    args = ap.parse_args()
+    taus_m = [float(x.strip()) / 1000.0 for x in args.thresholds_mm.split(",") if x.strip()]
+
+    result_dir = os.path.expanduser(args.result_dir)
+    gt_dir = os.path.expanduser(args.gt_dir)
+    gt_pcd_path, gt_mesh_path, normal_dir, mesh_dir = default_paths_from_folders(result_dir, gt_dir)
+
+    if not os.path.exists(gt_pcd_path):
+        raise RuntimeError(f"GT pcd not found: {gt_pcd_path}")
+    if not os.path.exists(gt_mesh_path):
+        raise RuntimeError(f"GT mesh not found: {gt_mesh_path}")
+    if not os.path.isdir(normal_dir):
+        raise RuntimeError(f"normal dir not found: {normal_dir}")
+    if not os.path.isdir(mesh_dir):
+        raise RuntimeError(f"mesh dir not found: {mesh_dir}")
+
+    out_dir = os.path.expanduser(args.out_dir) if args.out_dir else os.path.join(result_dir, "eval")
+    metrics_dir = os.path.join(out_dir, "metrics")
+    os.makedirs(metrics_dir, exist_ok=True)
+
+    # gather recon normal files
+    normal_files = sorted(glob.glob(os.path.join(normal_dir, "recon_0_*_xyz_normal.ply")),
+                          key=parse_id_from_recon_normal_name)
+
+    if args.id >= 0:
+        target = os.path.join(normal_dir, f"recon_0_{args.id:06d}_xyz_normal.ply")
+        if target not in normal_files:
+            if not os.path.exists(target):
+                raise RuntimeError(f"Requested id not found: {target}")
+            normal_files = [target]
+        else:
+            normal_files = [target]
+
+    if len(normal_files) == 0:
+        raise RuntimeError(f"No recon normal ply found in: {normal_dir}")
+
+    # summary csv
+    summary_csv = os.path.join(out_dir, "summary.csv")
+    summary_fields = [
+        "id",
+        "rec_points",
+        "accuracy_mm",
+        "completeness_mm",
+        "chamfer_l1_mm",
+        "f@2mm",
+        "f@5mm",
+        "f@10mm",
+        "normal_mean_angle_deg",
+        "mesh_chamfer_l1_mm",
+        "iou",
+        "metrics_json",
+    ]
+
+    rows = []
+
+    print("====================================================")
+    print(f"[INFO] result_dir : {result_dir}")
+    print(f"[INFO] gt_dir     : {gt_dir}")
+    print(f"[INFO] GT_pcd     : {gt_pcd_path}")
+    print(f"[INFO] GT_mesh    : {gt_mesh_path}")
+    print(f"[INFO] normal_dir : {normal_dir}")
+    print(f"[INFO] mesh_dir   : {mesh_dir}")
+    print(f"[INFO] out_dir    : {out_dir}")
+    print(f"[INFO] cases      : {len(normal_files)}")
+    print(f"[INFO] skip_iou={args.skip_iou}, skip_mesh_metrics={args.skip_mesh_metrics}, skip_pcd_mesh={args.skip_pcd_mesh}")
+    print("====================================================\n")
+
+    for i, rec_pcd_path in enumerate(normal_files, 1):
+        rid = parse_id_from_recon_normal_name(rec_pcd_path)
+        if rid < 0:
+            print(f"[WARN] cannot parse id, skip: {rec_pcd_path}")
+            continue
+
+        rec_mesh_path = os.path.join(mesh_dir, f"recon_0_{rid:06d}_mesh.ply")
+        if not os.path.exists(rec_mesh_path):
+            print(f"[WARN] mesh missing for id={rid:06d}, skip this case:\n  need: {rec_mesh_path}")
+            continue
+
+        args.cur_id = f"{rid:06d}"
+
+        print(f"\n================= [{i}/{len(normal_files)}] ID={rid:06d} =================")
+        print(f"REC_PCD : {rec_pcd_path}")
+        print(f"REC_MESH: {rec_mesh_path}")
+
+        try:
+            report = evaluate_one(
+                gt_pcd_path=gt_pcd_path,
+                gt_mesh_path=gt_mesh_path,
+                rec_pcd_path=rec_pcd_path,
+                rec_mesh_path=rec_mesh_path,
+                taus_m=taus_m,
+                args=args,
+            )
+        except Exception as e:
+            print(f"[ERROR] evaluation failed for id={rid:06d}: {e}")
+            continue
+
+        # save json
+        json_path = os.path.join(metrics_dir, f"recon_0_{rid:06d}_metrics.json")
+        with open(json_path, "w") as f:
+            json.dump(report, f, indent=2)
+
+        # build summary row
+        rec_points = int(len(o3d.io.read_point_cloud(rec_pcd_path).points))
+        pcdm = report["metrics"]["pcd_pcd"]
+        f2 = pcdm["fscore"].get(0.002, {}).get("fscore", 0.0)
+        f5 = pcdm["fscore"].get(0.005, {}).get("fscore", 0.0)
+        f10 = pcdm["fscore"].get(0.010, {}).get("fscore", 0.0)
+        nca = pcdm["normal_consistency"]["mean_angle_deg"] if pcdm.get("normal_consistency") else 90.0
+
+        mesh_cd_l1 = ""
+        if (not args.skip_mesh_metrics) and ("mesh_mesh" in report["metrics"]):
+            mesh_cd_l1 = report["metrics"]["mesh_mesh"]["chamfer_l1"] * 1000.0  # mm
+
+        iou_val = ""
+        if (not args.skip_iou) and ("iou" in report["metrics"]):
+            iou_val = report["metrics"]["iou"]["iou"]
+
+        row = {
+            "id": f"{rid:06d}",
+            "rec_points": rec_points,
+            "accuracy_mm": pcdm["accuracy_mean"] * 1000.0,
+            "completeness_mm": pcdm["completeness_mean"] * 1000.0,
+            "chamfer_l1_mm": pcdm["chamfer_l1"] * 1000.0,
+            "f@2mm": f2,
+            "f@5mm": f5,
+            "f@10mm": f10,
+            "normal_mean_angle_deg": nca,
+            "mesh_chamfer_l1_mm": mesh_cd_l1,
+            "iou": iou_val,
+            "metrics_json": json_path,
+        }
+        rows.append(row)
+
+        print(f"[SAVED] {json_path}")
+
+    # write summary csv
+    os.makedirs(out_dir, exist_ok=True)
+    with open(summary_csv, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=summary_fields)
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+
+    print(f"\n[Done] Batch evaluation finished.")
+    print(f"[SUMMARY] {summary_csv}")
+    print(f"[METRICS]  {metrics_dir}")
+
 
 if __name__ == "__main__":
+    import glob
     main()

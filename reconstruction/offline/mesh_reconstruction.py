@@ -84,7 +84,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Reconstruct mesh from normal-bearing point cloud (Poisson)."
     )
-    parser.add_argument("--input", type=str, default="./cube.ply", help="Input point cloud (.ply/.pcd/.npy ...)")
+    parser.add_argument("--input", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_02_000/normal/recon_0_000122_xyz_ascii.ply", help="Input point cloud (.ply/.pcd/.npy ...)")
     parser.add_argument(
         "output",
         type=str,
@@ -94,7 +94,7 @@ def main():
     parser.add_argument(
         "--depth",
         type=int,
-        default=9,
+        default=6,
         help="Poisson tree depth (default: 9, range ~[6,12])",
     )
     parser.add_argument(

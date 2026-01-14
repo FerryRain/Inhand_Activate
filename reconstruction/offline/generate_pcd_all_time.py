@@ -1,19 +1,29 @@
 """
-@FileName：Reconstruction.py
+@FileName：time_recon_by_seconds_trueframe.py
 @Description：
-    Fused reconstruction from BundleTrack keyframes with robust cleanup.
+    CUMULATIVE reconstructions from BundleTrack keyframes.
+    Windowing is defined by seconds (window_seconds) and fps, but frame selection
+    is done by TRUE frame_id parsed from filenames.
 
-    Defaults are set to:
-    --voxel 0.002
-    --mask_drop_boundary_px 4
-    --post_clean
-    --voxel_count_min 8
-    --dbscan_min_points 50
-@Author：Ferry
-@Time：2026 1/7/26 6:14 PM
-@Copyright：©2024-2026 ShanghaiTech University-RIMLAB
+    Example (fps=6, window=5s, include_endpoint=True):
+      - end_frame_id = round(5*6)=30  => fuse all saved frames with frame_id <= 30
+      - end_frame_id = round(10*6)=60 => fuse all saved frames with frame_id <= 60
+      ...
+
+    Folder structure:
+      debug_dir/keyframes/
+        rgb_full/000000.jpg
+        depth/000000.png
+        mask/000000.png
+        poses/000000.txt
+
+    Output:
+      recon_0_000030.ply
+      recon_0_000030_xyz_ascii.ply
+
+@Author：Ferry (refactor by ChatGPT)
+@Time：2026-01-13
 """
-
 
 import os
 import glob
@@ -75,6 +85,17 @@ def find_first_existing(paths):
         if os.path.exists(p):
             return p
     return None
+
+
+# ---------------- Frame-id parsing ----------------
+def parse_frame_id(fid: str) -> int:
+    s = fid.strip()
+    if s.isdigit():
+        return int(s)
+    digits = "".join([c for c in s if c.isdigit()])
+    if digits == "":
+        raise ValueError(f"Cannot parse frame id from fid='{fid}'")
+    return int(digits)
 
 
 # ---------------- Mask preprocess ----------------
@@ -232,8 +253,8 @@ def make_masked_rgbd(rgb: np.ndarray,
     return o3d.geometry.RGBDImage.create_from_color_and_depth(
         o3d_color,
         o3d_depth,
-        depth_scale=depth_scale,
-        depth_trunc=depth_trunc,
+        depth_scale=float(depth_scale),
+        depth_trunc=float(depth_trunc),
         convert_rgb_to_intensity=False
     )
 
@@ -276,95 +297,24 @@ def keep_largest_cluster_dbscan(pcd: o3d.geometry.PointCloud, eps: float, min_po
 
 
 def make_xyz_only(pcd: o3d.geometry.PointCloud) -> o3d.geometry.PointCloud:
-    """Create a point cloud that contains ONLY xyz (no colors/normals) for ASCII PLY."""
     xyz = o3d.geometry.PointCloud()
     xyz.points = o3d.utility.Vector3dVector(np.asarray(pcd.points).astype(np.float64))
     return xyz
 
 
-# ---------------- Main ----------------
-def main():
-    ap = argparse.ArgumentParser()
-
-    ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/purple_cube_1_00",
-                    help="debug_dir that contains keyframes/")
-    ap.add_argument("--K_path", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",
-                    help="3x3 intrinsic matrix txt")
-
-    # core (defaults set to your preferred params)
-    ap.add_argument("--stride", type=int, default=1)
-    ap.add_argument("--voxel", type=float, default=0.002)
-    ap.add_argument("--depth_scale", type=float, default=-1.0, help="auto if <0: uint16->1000, float->1")
-    ap.add_argument("--depth_trunc", type=float, default=2.0)
-
-    # mask
-    ap.add_argument("--mask_erode_k", type=int, default=3)
-    ap.add_argument("--mask_erode_iter", type=int, default=1)
-    ap.add_argument("--mask_open_k", type=int, default=0)
-    ap.add_argument("--mask_close_k", type=int, default=0)
-    ap.add_argument("--mask_keep_largest", action="store_true", default=True)
-    ap.add_argument("--mask_drop_boundary_px", type=int, default=4)
-
-    # depth
-    ap.add_argument("--zmin", type=float, default=0.0)
-    ap.add_argument("--zmax", type=float, default=0.0)
-    ap.add_argument("--depth_median_k", type=int, default=5)
-
-    ap.add_argument("--depth_consistency_k", type=int, default=5)
-    ap.add_argument("--depth_jump_mm", type=float, default=50.0)
-    ap.add_argument("--depth_jump_ratio", type=float, default=0.04)
-    ap.add_argument("--consistency_only_on_boundary", action="store_true", default=False)
-
-    # post clean (enabled by default)
-    ap.add_argument("--post_clean", action="store_true", default=True)
-    ap.add_argument("--voxel_count_min", type=int, default=8)
-    ap.add_argument("--voxel_count_size", type=float, default=-1.0, help="<0 -> 2*voxel")
-
-    ap.add_argument("--post_ror_radius", type=float, default=-1.0, help="<0 -> 4*voxel; 0 disables")
-    ap.add_argument("--post_ror_min_points", type=int, default=20)
-
-    ap.add_argument("--dbscan_eps", type=float, default=-1.0, help="<0 -> 5*voxel")
-    ap.add_argument("--dbscan_min_points", type=int, default=50)
-
-    # outputs (NEW)
-    ap.add_argument("--save_ply_color", type=str, default="./reconstruction_clean_color_5s.ply",
-                    help="colored point cloud output (keeps RGB)")
-    ap.add_argument("--save_ply_xyz", type=str, default="./reconstruction_xyz_down_ascii_5s.ply",
-                    help="xyz-only ascii ply output (only x y z)")
-    ap.add_argument("--xyz_down_voxel", type=float, default=0.004,
-                    help="voxel size for xyz-only downsampled cloud")
-
-    ap.add_argument("--no_vis", action="store_true", default=False)
-
-    args = ap.parse_args()
-
-    base = os.path.join(args.debug_dir, "keyframes")
-    rgb_dir = os.path.join(base, "rgb_full")
-    dep_dir = os.path.join(base, "depth")
-    msk_dir = os.path.join(base, "mask")
-    pos_dir = os.path.join(base, "poses")
-
-    if not os.path.isdir(base):
-        raise RuntimeError(f"Not found: {base}")
-
-    rgb_list = sorted(glob.glob(os.path.join(rgb_dir, "*.jpg")) + glob.glob(os.path.join(rgb_dir, "*.png")))
-    if len(rgb_list) == 0:
-        raise RuntimeError(f"No rgb found in {rgb_dir}")
-
-    def fid_from_rgb(p):
-        return os.path.splitext(os.path.basename(p))[0]
-
-    fids = [fid_from_rgb(p) for p in rgb_list][::max(1, args.stride)]
-
-    K = load_K_txt(args.K_path)
-    intrinsic = build_intrinsic_from_K(rgb_list[0], K)
-
+# ---------------- Core: reconstruct for a given list of fids ----------------
+def reconstruct_prefix(
+    fids_prefix,
+    rgb_dir, dep_dir, msk_dir, pos_dir,
+    intrinsic,
+    args,
+):
     fused_obj = o3d.geometry.PointCloud()
     guessed_depth_scale = None
+    processed = 0
+    skipped = 0
 
-    for i, fid in enumerate(fids):
+    for fid in fids_prefix:
         rgb_path = find_first_existing([os.path.join(rgb_dir, fid + ".jpg"),
                                         os.path.join(rgb_dir, fid + ".png")])
         dep_path = find_first_existing([os.path.join(dep_dir, fid + ".png"),
@@ -374,9 +324,9 @@ def main():
         pose_path = os.path.join(pos_dir, fid + ".txt")
 
         if rgb_path is None or dep_path is None or msk_path is None or (not os.path.exists(pose_path)):
+            skipped += 1
             continue
 
-        # BundleTrack pose: object_in_camera (T_ob_in_cam)
         T_ob_in_cam = load_T_txt(pose_path)
         T_cam_in_ob = np.linalg.inv(T_ob_in_cam)
 
@@ -421,72 +371,259 @@ def main():
         pcd_cam = safe_remove_non_finite(pcd_cam)
 
         if args.voxel > 0:
-            pcd_cam = pcd_cam.voxel_down_sample(args.voxel)
+            pcd_cam = pcd_cam.voxel_down_sample(float(args.voxel))
 
         pcd_obj = o3d.geometry.PointCloud(pcd_cam)
         pcd_obj.transform(T_cam_in_ob)  # cam -> obj
         fused_obj += pcd_obj
-
-        if i % 30 == 0:
-            print(f"[{i}/{len(fids)}] fused points = {len(fused_obj.points)}")
+        processed += 1
 
     if fused_obj.is_empty():
-        raise RuntimeError("No valid frames processed / fused point cloud is empty.")
+        return fused_obj, {"processed": processed, "skipped": skipped, "empty": True}
 
-    # final downsample (for colored main cloud)
+    # final downsample
     if args.voxel > 0:
-        fused_obj = fused_obj.voxel_down_sample(args.voxel)
+        fused_obj = fused_obj.voxel_down_sample(float(args.voxel))
 
-    # post-clean pipeline (your defaults)
+    # post clean
     if args.post_clean:
         vc_size = args.voxel_count_size
         if vc_size < 0:
             vc_size = 2.0 * args.voxel if args.voxel > 0 else 0.01
 
-        before = len(fused_obj.points)
-        fused_obj = voxel_count_filter(fused_obj, voxel_size=vc_size, min_count=args.voxel_count_min)
-        after = len(fused_obj.points)
-        print(f"[post voxel-count] size={vc_size:.4f}, min={args.voxel_count_min}: {before} -> {after}")
+        fused_obj = voxel_count_filter(fused_obj, voxel_size=float(vc_size), min_count=int(args.voxel_count_min))
 
-        # --- post radius outlier removal (ROR) ---
         pr = args.post_ror_radius
         if pr < 0:
             pr = 4.0 * args.voxel if args.voxel > 0 else 0.02
-
         if pr > 0:
-            before = len(fused_obj.points)
-            fused_obj, ind = fused_obj.remove_radius_outlier(
+            fused_obj, _ = fused_obj.remove_radius_outlier(
                 nb_points=int(args.post_ror_min_points),
                 radius=float(pr),
                 print_progress=False
             )
-            after = len(fused_obj.points)
-            print(f"[post ROR] r={pr:.4f}, k={args.post_ror_min_points}: {before} -> {after}")
 
         eps = args.dbscan_eps
         if eps < 0:
             eps = 5.0 * args.voxel if args.voxel > 0 else 0.02
-        before = len(fused_obj.points)
         fused_obj = keep_largest_cluster_dbscan(fused_obj, eps=float(eps), min_points=int(args.dbscan_min_points))
-        after = len(fused_obj.points)
-        print(f"[post DBSCAN-largest] eps={eps:.4f}, min_pts={args.dbscan_min_points}: {before} -> {after}")
 
-    # ---------------- Save #1: colored cloud ----------------
-    o3d.io.write_point_cloud(args.save_ply_color, fused_obj, write_ascii=False)
-    print(f"[saved color] {args.save_ply_color}  points={len(fused_obj.points)}  has_colors={fused_obj.has_colors()}")
+    return fused_obj, {"processed": processed, "skipped": skipped, "empty": False}
 
-    # ---------------- Save #2: xyz-only ASCII cloud (downsampled) ----------------
-    xyz_src = fused_obj
-    if args.xyz_down_voxel and args.xyz_down_voxel > 0:
-        xyz_src = xyz_src.voxel_down_sample(float(args.xyz_down_voxel))
 
-    xyz_only = make_xyz_only(xyz_src)  # ensures header only has x y z
-    o3d.io.write_point_cloud(args.save_ply_xyz, xyz_only, write_ascii=True)
-    print(f"[saved xyz ASCII] {args.save_ply_xyz}  points={len(xyz_only.points)}  (down_voxel={args.xyz_down_voxel})")
+# ---------------- Main ----------------
+def main():
+    ap = argparse.ArgumentParser()
 
-    if not args.no_vis:
-        axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
-        o3d.visualization.draw_geometries([axis, fused_obj], width=1280, height=720)
+    ap.add_argument("--debug_dir", type=str,
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/green_cube_00_001",
+                    help="debug_dir that contains keyframes/")
+    ap.add_argument("--K_path", type=str,
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",
+                    help="3x3 intrinsic matrix txt")
+
+    # windows by seconds -> frames by fps
+    ap.add_argument("--fps", type=float, default=3.2, help="recorded fps (frames per second)")
+    ap.add_argument("--window_seconds", type=float, default=1, help="save cumulative recon every N seconds")
+    ap.add_argument("--include_endpoint", default=True, action=argparse.BooleanOptionalAction,
+                    help="If True: end_frame=round(k*window_seconds*fps). "
+                         "If False: end_frame=round(k*window_seconds*fps)-1.")
+
+    # optional single-shot
+    ap.add_argument("--end_seconds", type=float, default=-1.0,
+                    help="if >=0: only reconstruct 0~round(end_seconds*fps) once, then exit.")
+    ap.add_argument("--end_frame_id", type=int, default=-1,
+                    help="if >=0: only reconstruct 0~end_frame_id once, then exit. "
+                         "If both end_seconds and end_frame_id are set, end_frame_id wins.")
+
+    # core
+    ap.add_argument("--stride", type=int, default=1,
+                    help="use every N-th SAVED frame within [0..end_frame_id] for speed. "
+                         "Window definition still uses fps*seconds.")
+    ap.add_argument("--voxel", type=float, default=0.002)
+    ap.add_argument("--depth_scale", type=float, default=-1.0, help="auto if <0: uint16->1000, float->1")
+    ap.add_argument("--depth_trunc", type=float, default=2.0)
+
+    # mask
+    ap.add_argument("--mask_erode_k", type=int, default=3)
+    ap.add_argument("--mask_erode_iter", type=int, default=1)
+    ap.add_argument("--mask_open_k", type=int, default=0)
+    ap.add_argument("--mask_close_k", type=int, default=0)
+    ap.add_argument("--mask_keep_largest", default=True, action=argparse.BooleanOptionalAction)
+    ap.add_argument("--mask_drop_boundary_px", type=int, default=4)
+
+    # depth
+    ap.add_argument("--zmin", type=float, default=0.0)
+    ap.add_argument("--zmax", type=float, default=0.0)
+    ap.add_argument("--depth_median_k", type=int, default=5)
+
+    ap.add_argument("--depth_consistency_k", type=int, default=5)
+    ap.add_argument("--depth_jump_mm", type=float, default=50.0)
+    ap.add_argument("--depth_jump_ratio", type=float, default=0.04)
+    ap.add_argument("--consistency_only_on_boundary", default=False, action=argparse.BooleanOptionalAction)
+
+    # post clean
+    ap.add_argument("--post_clean", default=True, action=argparse.BooleanOptionalAction)
+    ap.add_argument("--voxel_count_min", type=int, default=8)
+    ap.add_argument("--voxel_count_size", type=float, default=-1.0, help="<0 -> 2*voxel")
+
+    ap.add_argument("--post_ror_radius", type=float, default=-1.0, help="<0 -> 4*voxel; 0 disables")
+    ap.add_argument("--post_ror_min_points", type=int, default=20)
+
+    ap.add_argument("--dbscan_eps", type=float, default=-1.0, help="<0 -> 5*voxel")
+    ap.add_argument("--dbscan_min_points", type=int, default=100)
+
+    # outputs
+    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001", help="output directory")
+    ap.add_argument("--xyz_down_voxel", type=float, default=0.004, help="voxel size for xyz-only downsampled cloud")
+
+    # visualization
+    ap.add_argument("--no_vis", default=True, action=argparse.BooleanOptionalAction)
+    ap.add_argument("--axis_size", type=float, default=0.1)
+
+    args = ap.parse_args()
+
+    base = os.path.join(args.debug_dir, "keyframes")
+    rgb_dir = os.path.join(base, "rgb_full")
+    dep_dir = os.path.join(base, "depth")
+    msk_dir = os.path.join(base, "mask")
+    pos_dir = os.path.join(base, "poses")
+
+    if not os.path.isdir(base):
+        raise RuntimeError(f"Not found: {base}")
+
+    rgb_list = sorted(glob.glob(os.path.join(rgb_dir, "*.jpg")) + glob.glob(os.path.join(rgb_dir, "*.png")))
+    if len(rgb_list) == 0:
+        raise RuntimeError(f"No rgb found in {rgb_dir}")
+
+    def fid_from_rgb(p):
+        return os.path.splitext(os.path.basename(p))[0]
+
+    # build (frame_id, fid) from filenames and sort by true frame_id
+    fid_items = []
+    for p in rgb_list:
+        fid = fid_from_rgb(p)
+        try:
+            frame_id = parse_frame_id(fid)
+        except Exception:
+            continue
+        fid_items.append((frame_id, fid))
+
+    if len(fid_items) == 0:
+        raise RuntimeError("No valid numeric frame ids parsed from rgb filenames.")
+
+    fid_items.sort(key=lambda x: x[0])
+    min_frame_id = fid_items[0][0]
+    max_frame_id = fid_items[-1][0]
+    has_zero = any(fr == 0 for fr, _ in fid_items)
+    args.out_dir = os.path.join(args.out_dir, f"pcd")
+    os.makedirs(args.out_dir, exist_ok=True)
+
+    K = load_K_txt(args.K_path)
+    intrinsic = build_intrinsic_from_K(rgb_list[0], K)
+
+    fps = float(args.fps)
+    if fps <= 0:
+        raise ValueError("fps must be > 0")
+    stride = max(1, int(args.stride))
+    window_seconds = float(args.window_seconds)
+    if window_seconds <= 0:
+        raise ValueError("window_seconds must be > 0")
+
+    print("====================================================")
+    print(f"[INFO] saved frames = {len(fid_items)} (min_id={min_frame_id}, max_id={max_frame_id})")
+    if not has_zero:
+        print("[WARN] frame_id=0 not found in saved frames. '0~xxx' will effectively start from earliest saved frame.")
+    print(f"[INFO] fps={fps:.3f}, window_seconds={window_seconds:.3f}")
+    print(f"[INFO] include_endpoint={args.include_endpoint}, stride(on saved frames)={stride}")
+    print(f"[INFO] out_dir={args.out_dir}")
+    print("====================================================")
+
+    def compute_end_frame_id_from_seconds(sec: float) -> int:
+        # match your original expectation: 5s@6fps => 30
+        end_f = int(round(sec * fps))
+        if not args.include_endpoint:
+            end_f -= 1
+        return max(0, end_f)
+
+    def run_one(end_frame_id: int, tag: str):
+        # clamp to available max to avoid endless empty windows
+        end_frame_id = min(int(end_frame_id), max_frame_id)
+
+        prefix_all = [fid for (fr, fid) in fid_items if fr <= end_frame_id]
+        if len(prefix_all) == 0:
+            print(f"[{tag}] 0~{end_frame_id:06d}: NO SAVED FRAMES, skip")
+            return
+
+        # stride only affects how many SAVED frames we use, not the window definition
+        prefix = prefix_all[::stride]
+
+        first_fr = parse_frame_id(prefix[0])
+        last_fr = parse_frame_id(prefix[-1])
+        approx_sec = end_frame_id / fps
+
+        print(f"\n[{tag}] recon 0~{end_frame_id:06d} (~{approx_sec:.2f}s)  "
+              f"use N={len(prefix)} / avail N={len(prefix_all)}  saved_range={first_fr:06d}~{last_fr:06d}")
+
+        fused_obj, info = reconstruct_prefix(prefix, rgb_dir, dep_dir, msk_dir, pos_dir, intrinsic, args)
+
+        if fused_obj.is_empty():
+            print(f"  -> EMPTY (processed={info['processed']}, skipped={info['skipped']})")
+            return
+
+        out_color = os.path.join(args.out_dir, f"recon_0_{end_frame_id:06d}.ply")
+        o3d.io.write_point_cloud(out_color, fused_obj, write_ascii=False)
+        print(f"  [saved color] {out_color}  points={len(fused_obj.points)}  skipped={info['skipped']}")
+
+        xyz_src = fused_obj
+        if args.xyz_down_voxel and args.xyz_down_voxel > 0:
+            xyz_src = xyz_src.voxel_down_sample(float(args.xyz_down_voxel))
+        xyz_only = make_xyz_only(xyz_src)
+        out_xyz = os.path.join(args.out_dir, f"recon_0_{end_frame_id:06d}_xyz_ascii.ply")
+        o3d.io.write_point_cloud(out_xyz, xyz_only, write_ascii=True)
+        print(f"  [saved xyz ASCII] {out_xyz}  points={len(xyz_only.points)}  (down_voxel={args.xyz_down_voxel})")
+
+        if not args.no_vis:
+            axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=float(args.axis_size))
+            o3d.visualization.draw_geometries(
+                [axis, fused_obj],
+                window_name=f"{tag}: end_frame={end_frame_id:06d}  points={len(fused_obj.points)}",
+                width=1280,
+                height=720
+            )
+
+    # ---------------- Single mode ----------------
+    if args.end_frame_id >= 0 or args.end_seconds >= 0:
+        if args.end_frame_id >= 0:
+            end_frame_id = int(args.end_frame_id)
+            if not args.include_endpoint:
+                end_frame_id -= 1
+            end_frame_id = max(0, end_frame_id)
+        else:
+            end_frame_id = compute_end_frame_id_from_seconds(float(args.end_seconds))
+
+        run_one(end_frame_id, tag="SINGLE")
+        print("\n[Done] Single cumulative reconstruction finished.")
+        return
+
+    # ---------------- Series mode: 0~5s, 0~10s, 0~15s ... ----------------
+    k = 1
+    while True:
+        end_sec = k * window_seconds
+        end_frame_id = compute_end_frame_id_from_seconds(end_sec)
+
+        final_flag = False
+        if end_frame_id >= max_frame_id:
+            end_frame_id = max_frame_id
+            final_flag = True
+
+        run_one(end_frame_id, tag=f"CUM{k}")
+
+        if final_flag:
+            break
+        k += 1
+
+    print("\n[Done] Cumulative reconstructions (seconds->true frame id) finished.")
 
 
 if __name__ == "__main__":
