@@ -807,7 +807,7 @@ if __name__ == "__main__":
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--in_path", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/reconstruction_clean_color.ply")
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/inhand_y.ply")
     ap.add_argument("--no_viz", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
@@ -815,9 +815,9 @@ if __name__ == "__main__":
     est = GPISNBVv2()
     nbv = est.estimate(args.in_path, seed=args.seed, verbose=True)
 
-    print("\nNBV:")
-    for k, v in nbv.items():
-        print(f"  {k}: {v}")
+    print(f"\nNBV:{nbv['best_dir']}")
+    # for k, v in nbv.items():
+    #     print(f"  {k}: {v}")
 
     if not args.no_viz:
         est.viz()
