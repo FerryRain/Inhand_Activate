@@ -10,11 +10,16 @@ Workflow:
    result_dir/mesh/*.ply   (mesh)
 2) Pick reference transform T_ref using STRICT alignment on candidate frames:
    manual scale -> auto-unit(mm<->m) -> auto-voxel -> PCA(24-way) -> multiscale ICP(point-to-plane with Tukey)
-   score by Precision@tau (default tau=0.5mm) on eval downsampled clouds
+   score by Precision@tau (default tau=pick_tau_mm) on eval downsampled clouds
 3) Apply fixed (s_rec, s_gt, T_ref) to ALL frames (no per-frame ICP), compute:
    - pcd_pcd: accuracy_mean, completeness_mean, chamfer_l1, chamfer_l2, fscore@taus (+ normal consistency mean_abs_cos, mean_angle_deg)
    - mesh_mesh: accuracy_mean, completeness_mean, chamfer_l1, chamfer_l2, fscore@taus
 4) Save summary.csv to out_dir (default: result_dir/eval_strictref)
+
+Extra:
+- Visualization for alignment inspection:
+  --vis_ref_ids  : visualize STRICT alignment for selected reference candidates
+  --vis_eval_ids : visualize final aligned results for selected frames
 
 Example:
 python compute_metric_batch_strictref.py \
@@ -22,7 +27,9 @@ python compute_metric_batch_strictref.py \
   --gt_root /.../GT_data/cube/GT \
   --align_mode search_best \
   --search_ids 173,186,-1 \
-  --pick_tau_mm 0.5
+  --pick_tau_mm 0.5 \
+  --vis_ref_ids 173,-1 \
+  --vis_eval_ids 100,120,-1
 """
 
 import os
@@ -31,7 +38,7 @@ import csv
 import glob
 import time
 import argparse
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Optional
 
 import numpy as np
 import open3d as o3d
@@ -432,6 +439,61 @@ def parse_id_list(s: str) -> List[int]:
 
 
 # ============================================================
+# Visualization helpers
+# ============================================================
+def resolve_ids_with_last(id_list: List[int], all_ids: List[int]) -> List[int]:
+    if not all_ids:
+        return []
+    last = all_ids[-1]
+    out = []
+    seen = set()
+    for x in id_list:
+        v = last if x < 0 else x
+        if v in all_ids and v not in seen:
+            out.append(v)
+            seen.add(v)
+    return out
+
+
+def visualize_alignment(
+    gt_pcd: o3d.geometry.PointCloud,
+    rec_pcd_aligned: o3d.geometry.PointCloud,
+    title: str,
+    voxel: float = 0.002,
+    gt_mesh: Optional[o3d.geometry.TriangleMesh] = None,
+    rec_mesh_aligned: Optional[o3d.geometry.TriangleMesh] = None,
+):
+    if voxel and voxel > 0:
+        gt_vis = preprocess_pcd(o3d.geometry.PointCloud(gt_pcd), voxel)
+        rec_vis = preprocess_pcd(o3d.geometry.PointCloud(rec_pcd_aligned), voxel)
+    else:
+        gt_vis = o3d.geometry.PointCloud(gt_pcd)
+        rec_vis = o3d.geometry.PointCloud(rec_pcd_aligned)
+
+    gt_vis.paint_uniform_color([0.2, 0.8, 0.2])   # green
+    rec_vis.paint_uniform_color([0.9, 0.2, 0.2])  # red
+
+    geoms = [gt_vis, rec_vis, o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.05)]
+
+    if gt_mesh is not None and rec_mesh_aligned is not None:
+        gt_m = o3d.geometry.TriangleMesh(gt_mesh)
+        rec_m = o3d.geometry.TriangleMesh(rec_mesh_aligned)
+        if not gt_m.has_vertex_normals():
+            gt_m.compute_vertex_normals()
+        if not rec_m.has_vertex_normals():
+            rec_m.compute_vertex_normals()
+        gt_m.paint_uniform_color([0.2, 0.8, 0.2])
+        rec_m.paint_uniform_color([0.9, 0.2, 0.2])
+        geoms.extend([gt_m, rec_m])
+
+    print(f"[VIS] {title}  (close window to continue)")
+    try:
+        o3d.visualization.draw_geometries(geoms, window_name=title)
+    except Exception as e:
+        print(f"[VIS][SKIP] Open3D window failed (headless?). Error: {repr(e)}")
+
+
+# ============================================================
 # CSV
 # ============================================================
 def flatten_row(fid: int, time_s: float,
@@ -453,7 +515,19 @@ def flatten_row(fid: int, time_s: float,
         row[f"pcd_pcd_precision@{tau:.6f}"] = pcd_report["fscore"][tau]["precision"]
         row[f"pcd_pcd_recall@{tau:.6f}"] = pcd_report["fscore"][tau]["recall"]
 
-    if mesh_report is not None:
+    # Always include mesh columns (avoid CSV field mismatch)
+    if mesh_report is None:
+        row.update({
+            "mesh_mesh_accuracy_mean": np.nan,
+            "mesh_mesh_completeness_mean": np.nan,
+            "mesh_mesh_chamfer_l1": np.nan,
+            "mesh_mesh_chamfer_l2": np.nan,
+        })
+        for tau in taus_m:
+            row[f"mesh_mesh_fscore@{tau:.6f}"] = np.nan
+            row[f"mesh_mesh_precision@{tau:.6f}"] = np.nan
+            row[f"mesh_mesh_recall@{tau:.6f}"] = np.nan
+    else:
         row.update({
             "mesh_mesh_accuracy_mean": mesh_report["accuracy_mean"],
             "mesh_mesh_completeness_mean": mesh_report["completeness_mean"],
@@ -464,13 +538,20 @@ def flatten_row(fid: int, time_s: float,
             row[f"mesh_mesh_fscore@{tau:.6f}"] = mesh_report["fscore"][tau]["fscore"]
             row[f"mesh_mesh_precision@{tau:.6f}"] = mesh_report["fscore"][tau]["precision"]
             row[f"mesh_mesh_recall@{tau:.6f}"] = mesh_report["fscore"][tau]["recall"]
+
     return row
 
 
 def write_csv(path: str, rows: List[Dict[str, Any]]):
     if not rows:
         raise RuntimeError("No rows to write.")
-    keys = list(rows[0].keys())
+
+    # Robust fieldnames: union of all keys (stable sorted)
+    keys_set = set()
+    for r in rows:
+        keys_set.update(r.keys())
+    keys = sorted(keys_set)
+
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=keys)
         w.writeheader()
@@ -508,7 +589,7 @@ def strict_align_one_candidate(
       }
     """
     gt_pcd = read_point_cloud(gt_pcd_path)
-    gt_mesh = read_triangle_mesh(gt_mesh_path)  # only for consistent scaling (not used in alignment)
+    gt_mesh = read_triangle_mesh(gt_mesh_path)  # only for consistent scaling
     rec_pcd = read_point_cloud(rec_pcd_path)
 
     # manual scales first
@@ -567,12 +648,14 @@ def strict_align_one_candidate(
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001", help="dir containing normal/ and mesh/")
-    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube/GT", help="GT folder containing mesh/GT_mesh.stl and ply/GT_normal.ply")
+    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_002",
+                    help="dir containing normal/ and mesh/")
+    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/yellow_cylinder_01/GT",
+                    help="GT folder containing mesh/GT_mesh.stl and ply/GT_normal.ply")
     ap.add_argument("--fps", type=float, default=4.0, help="time_s = frame_id / fps")
 
     ap.add_argument("--thresholds_mm", type=str, default="2,5,10", help="fscore thresholds (mm)")
-    ap.add_argument("--pick_tau_mm", type=float, default=5, help="ref selection tau (mm) using Precision@tau")
+    ap.add_argument("--pick_tau_mm", type=float, default=5.0, help="ref selection tau (mm) using Precision@tau")
 
     ap.add_argument("--rec_scale", type=float, default=1.0)
     ap.add_argument("--gt_scale", type=float, default=1.0)
@@ -587,8 +670,8 @@ def main():
     ap.add_argument("--align_mode", choices=["fixed_id", "search_best", "per_frame"], default="search_best",
                     help="fixed_id/search_best = strict ref then fixed T for all; per_frame = strict per-frame (slow)")
     ap.add_argument("--align_id", type=int, default=-1, help="fixed_id reference frame id; -1 means last")
-    ap.add_argument("--search_ids", type=str, default="173,186,-1",
-                    help="search_best explicit ids, e.g. '173,186,-1' (-1 means last). If empty, uses --search_k uniform.")
+    ap.add_argument("--search_ids", type=str, default="100,200,-1",
+                    help="search_best explicit ids, e.g. '100,200,-1' (-1 means last). If empty, uses --search_k uniform.")
     ap.add_argument("--search_k", type=int, default=7, help="search_best fallback candidate count (uniform + last)")
 
     ap.add_argument("--skip_mesh", action="store_true", help="skip mesh metrics")
@@ -598,6 +681,16 @@ def main():
     ap.add_argument("--out_dir", type=str, default="", help="default: result_dir/eval_strictref")
     ap.add_argument("--save_T", type=str, default="", help="save chosen T_ref to txt")
     ap.add_argument("--save_aligned", action="store_true", help="save aligned pcd/mesh for all frames (large)")
+
+    # ---- NEW: visualization options ----
+    ap.add_argument("--vis_eval_ids", type=str, default="",
+                    help="visualize final aligned eval results for ids, e.g. '100,120,-1' (-1 means last)")
+    ap.add_argument("--vis_ref_ids", type=str, default="100, 200, -1",
+                    help="visualize strict alignment for ref candidates ids, e.g. '109,144,-1'")
+    ap.add_argument("--vis_voxel", type=float, default=0.002,
+                    help="voxel downsample for visualization (0 disables)")
+    ap.add_argument("--vis_mesh", action="store_true",default=True,
+                    help="also show meshes in visualization (if available)")
 
     args = ap.parse_args()
 
@@ -621,6 +714,10 @@ def main():
     ids = sorted(index.keys())
     if not ids:
         raise RuntimeError("No recon point clouds found in result_dir/normal.")
+
+    # Parse visualization ids
+    vis_ref_ids = resolve_ids_with_last(parse_id_list(args.vis_ref_ids), ids) if args.vis_ref_ids.strip() else []
+    vis_eval_ids = resolve_ids_with_last(parse_id_list(args.vis_eval_ids), ids) if args.vis_eval_ids.strip() else []
 
     # ---------------- Choose candidate ids ----------------
     if args.align_mode == "fixed_id":
@@ -651,6 +748,7 @@ def main():
     if args.align_mode in ["fixed_id", "search_best"]:
         best_score = -1.0
         best_id = None
+
         for cid in cand_ids:
             if cid not in index:
                 print(f"[REF_CAND][SKIP] id={cid} not found.")
@@ -678,6 +776,48 @@ def main():
                   f"voxel={info['voxel']:.6f}  s_rec={info['s_rec']} s_gt={info['s_gt']}  "
                   f"align_time={info['time_align_s']:.2f}s")
 
+            # ---- Visualize STRICT alignment for selected candidates ----
+            if cid in vis_ref_ids:
+                gt_tmp = read_point_cloud(gt_pcd_path)
+                rec_tmp = read_point_cloud(rec_pcd_path)
+
+                apply_scale(gt_tmp, args.gt_scale)
+                apply_scale(rec_tmp, args.rec_scale)
+
+                apply_scale(gt_tmp, info["s_gt"])
+                apply_scale(rec_tmp, info["s_rec"])
+
+                rec_tmp.transform(info["T"])
+
+                if args.vis_mesh:
+                    # optional meshes for visualization (if exist)
+                    gt_m = read_triangle_mesh(gt_mesh_path)
+                    apply_scale(gt_m, args.gt_scale)
+                    apply_scale(gt_m, info["s_gt"])
+
+                    rec_m = None
+                    rec_mesh_path = index[cid].get("mesh", "")
+                    if rec_mesh_path and os.path.isfile(rec_mesh_path):
+                        rec_m = read_triangle_mesh(rec_mesh_path)
+                        apply_scale(rec_m, args.rec_scale)
+                        apply_scale(rec_m, info["s_rec"])
+                        rec_m.transform(info["T"])
+                    visualize_alignment(
+                        gt_pcd=gt_tmp,
+                        rec_pcd_aligned=rec_tmp,
+                        title=f"REF_ALIGN id={cid:06d} P@{args.pick_tau_mm:.2f}mm={info['score']:.4f}",
+                        voxel=float(args.vis_voxel),
+                        gt_mesh=gt_m,
+                        rec_mesh_aligned=rec_m,
+                    )
+                else:
+                    visualize_alignment(
+                        gt_pcd=gt_tmp,
+                        rec_pcd_aligned=rec_tmp,
+                        title=f"REF_ALIGN id={cid:06d} P@{args.pick_tau_mm:.2f}mm={info['score']:.4f}",
+                        voxel=float(args.vis_voxel),
+                    )
+
             if info["score"] > best_score:
                 best_score = info["score"]
                 best_id = cid
@@ -696,6 +836,7 @@ def main():
     # ---------------- Load GT ONCE with chosen scales ----------------
     gt_pcd = read_point_cloud(gt_pcd_path)
     gt_mesh = read_triangle_mesh(gt_mesh_path)
+
     apply_scale(gt_pcd, args.gt_scale)
     apply_scale(gt_mesh, args.gt_scale)
     apply_scale(gt_pcd, best_s_gt)
@@ -731,7 +872,6 @@ def main():
 
         # Align
         if args.align_mode == "per_frame":
-            # strict per-frame (slow, mostly for debugging/verification)
             info = strict_align_one_candidate(
                 rec_pcd_path=index[fid]["pcd"],
                 gt_pcd_path=gt_pcd_path,
@@ -759,6 +899,25 @@ def main():
             rec_mesh_aligned = o3d.geometry.TriangleMesh(rec_mesh)
             rec_mesh_aligned.transform(T)
 
+        # ---- Visualize selected eval frames ----
+        if fid in vis_eval_ids:
+            if args.vis_mesh:
+                visualize_alignment(
+                    gt_pcd=gt_pcd,
+                    rec_pcd_aligned=rec_pcd_aligned,
+                    title=f"EVAL_ALIGN id={fid:06d} t={float(fid)/float(args.fps):.2f}s",
+                    voxel=float(args.vis_voxel),
+                    gt_mesh=gt_mesh,
+                    rec_mesh_aligned=rec_mesh_aligned,
+                )
+            else:
+                visualize_alignment(
+                    gt_pcd=gt_pcd,
+                    rec_pcd_aligned=rec_pcd_aligned,
+                    title=f"EVAL_ALIGN id={fid:06d} t={float(fid)/float(args.fps):.2f}s",
+                    voxel=float(args.vis_voxel),
+                )
+
         # PCD eval downsample
         if args.eval_voxel and args.eval_voxel > 0:
             rec_eval = preprocess_pcd(rec_pcd_aligned, args.eval_voxel)
@@ -785,11 +944,15 @@ def main():
         rows.append(flatten_row(fid, time_s, pcd_report, mesh_report, taus_m))
 
         if args.save_aligned:
-            o3d.io.write_point_cloud(os.path.join(aligned_dir, "pcd", f"aligned_{fid:06d}.ply"),
-                                     rec_pcd_aligned, write_ascii=False)
+            o3d.io.write_point_cloud(
+                os.path.join(aligned_dir, "pcd", f"aligned_{fid:06d}.ply"),
+                rec_pcd_aligned, write_ascii=False
+            )
             if rec_mesh_aligned is not None:
-                o3d.io.write_triangle_mesh(os.path.join(aligned_dir, "mesh", f"aligned_{fid:06d}.ply"),
-                                           rec_mesh_aligned, write_ascii=False)
+                o3d.io.write_triangle_mesh(
+                    os.path.join(aligned_dir, "mesh", f"aligned_{fid:06d}.ply"),
+                    rec_mesh_aligned, write_ascii=False
+                )
 
         if (i % 5) == 0 or (i == len(ids) - 1):
             f0 = pcd_report["fscore"][taus_m[0]]["fscore"]

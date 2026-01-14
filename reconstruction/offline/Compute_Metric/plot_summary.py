@@ -128,7 +128,7 @@ def plot_group(
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001/eval_strictref/summary.csv")
+    ap.add_argument("--csv", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_002/eval_strictref/summary.csv")
     ap.add_argument("--out_dir", default="", help="default: <csv_dir>/plots_marks_legend")
     ap.add_argument("--dpi", type=int, default=200)
     ap.add_argument("--t_mark", type=float, default=30.0, help="draw dashed line at this exact time (seconds)")
