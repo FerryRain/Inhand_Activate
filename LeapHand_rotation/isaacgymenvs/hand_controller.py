@@ -29,8 +29,9 @@ from gym import spaces
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rl_games.torch_runner import Runner, _override_sigma, _restore
 from rl_games.algos_torch import model_builder
-from isaacgymenvs.learning import amp_continuous, amp_models, amp_network_builder, amp_players
-from isaacgymenvs.hardware_controller import LeapHand 
+from .learning import amp_continuous, amp_models, amp_network_builder, amp_players
+
+from .hardware_controller import LeapHand
 import queue
 
 try:
@@ -57,7 +58,9 @@ def temporal_filter(new_frame, prev_frame, alpha=0.2):
     """
     return alpha * new_frame + (1 - alpha) * prev_frame
 
+
 class HardwarePlayer(object):
+    # @hydra.main(config_name='config', config_path='cfg')
     def __init__(self, config):
         self.image_queue = queue.Queue(maxsize=1)
         self.config = OmegaConf.to_container(config, resolve=True)
@@ -85,7 +88,7 @@ class HardwarePlayer(object):
 
         self.spin_axis = {
             'x': torch.tensor([[-1.0, 0.0, 0.0]], device=self.device),
-            'y': torch.tensor([[0.0, 1.0, 0.0]], device=self.device),
+            'y': torch.tensor([[0.0, -1.0, 0.0]], device=self.device),
             'z': torch.tensor([[0.0, 0.0, 1.0]], device=self.device)
         }
         self.players = {}

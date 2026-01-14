@@ -1,7 +1,7 @@
 import numpy as np
 
-from leap_hand_utils.dynamixel_client import *
-import leap_hand_utils.leap_hand_utils as lhu
+from LeapHand_rotation.isaacgymenvs.leap_hand_utils.dynamixel_client import *
+import LeapHand_rotation.isaacgymenvs.leap_hand_utils.leap_hand_utils as lhu
 import time
 #######################################################
 """This can control and query the LEAP Hand

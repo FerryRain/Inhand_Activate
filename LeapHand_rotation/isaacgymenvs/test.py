@@ -7,6 +7,9 @@ import cv2
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
+import os
+os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+
 @hydra.main(config_name='config', config_path='cfg')
 def main(config: DictConfig):
     agent = None
@@ -19,7 +22,7 @@ def main(config: DictConfig):
         cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(WINDOW_NAME, 400, 400)
 
-        agent.get_axis('z')
+        agent.get_axis('y')
         while True:
             try:
                 image = agent.image_queue.get_nowait()
@@ -33,7 +36,7 @@ def main(config: DictConfig):
             if not agent._deploy_thread.is_alive():
                 print("[Main Thread] Deployment thread has unexpectedly stopped. Exiting.")
                 break
-            agent.get_axis()
+            # agent.get_axis()
 
 
     except KeyboardInterrupt:

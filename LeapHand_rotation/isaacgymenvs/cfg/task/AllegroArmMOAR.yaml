@@ -6,11 +6,13 @@ physics_engine: ${..physics_engine}
 # new added
 models:
   x:
-    checkpoint: "../runs/final/-x-ps.pth"
+    checkpoint: "LeapHand_rotation/runs/final/-x-ps.pth"
   y:
-    checkpoint: "../runs/final/-y-ps.pth"
+    checkpoint: "LeapHand_rotation/runs/final/y-ps.pth"
+#    checkpoint: "LeapHand_rotation/runs/final/-y-ps.pth"
+#    checkpoint: "LeapHand_rotation/runs/final/y-ps_1.pth"
   z:
-    checkpoint: "../runs/final/z-ps_1.pth"
+    checkpoint: "LeapHand_rotation/runs/final/z-ps_1.pth"
 # -----------------
 default_axis: "z"
 

@@ -2,14 +2,32 @@ import hydra
 from hydra import compose, initialize
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-from isaacgymenvs.utils.reformat import omegaconf_to_dict
+from .utils.reformat import omegaconf_to_dict
 
 
-OmegaConf.register_new_resolver('eq', lambda x, y: x.lower()==y.lower())
-OmegaConf.register_new_resolver('contains', lambda x, y: x.lower() in y.lower())
-OmegaConf.register_new_resolver('if', lambda pred, a, b: a if pred else b)
-OmegaConf.register_new_resolver('resolve_default', lambda default, arg: default if arg=='' else arg)
-
+# OmegaConf.register_new_resolver('eq', lambda x, y: x.lower()==y.lower())
+# OmegaConf.register_new_resolver('contains', lambda x, y: x.lower() in y.lower())
+# OmegaConf.register_new_resolver('if', lambda pred, a, b: a if pred else b)
+if not OmegaConf.has_resolver("eq"):
+    OmegaConf.register_new_resolver(
+        "eq",
+        lambda x, y: x.lower() in y.lower()
+    )
+if not OmegaConf.has_resolver("if"):
+    OmegaConf.register_new_resolver(
+        "if",
+        lambda pred, a, b: a if pred else b
+    )
+if not OmegaConf.has_resolver("contains"):
+    OmegaConf.register_new_resolver(
+        "contains",
+        lambda x, y: x.lower()==y.lower()
+    )
+if not OmegaConf.has_resolver("resolve_default"):
+    OmegaConf.register_new_resolver(
+        "resolve_default",
+        lambda default, arg: default if arg == "" else arg
+    )
 
 def dict_override(dict_to_update, update_dict):
     for key_prefix, val in update_dict.items():

@@ -1,5 +1,5 @@
 import numpy as np
-from leap_node import LeapNode 
+from LeapHand_rotation.isaacgymenvs.leap_node import LeapNode
 
 
 def unscale_np(x, lower, upper):
