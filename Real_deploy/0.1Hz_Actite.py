@@ -2,7 +2,7 @@
 @FileName：time_cost.py
 @Description：
 @Author：Ferry
-@Time：2026 1/13/26 4:24 PM
+@Time：2026 1/13/26 4:24 PM
 @Copyright：©2024-2026 ShanghaiTech University-RIMLAB
 """
 
@@ -45,17 +45,14 @@ class TimingStats:
             return f"{name:28s} total={total:9.3f}s  n={n:6d}  avg={avg:8.4f}s"
 
         order = [
-            # main stages
             "stage/tracking",
             "stage/reconstruct",
             "stage/active",
 
-            # hand-only breakdown (get_axis calls)
             "hand/tracking",
             "hand/reconstruct",
             "hand/active",
 
-            # optional breakdown for active
             "active/reconstruct",
             "active/nbv_estimate",
             "active/nbv_viz",
@@ -88,15 +85,20 @@ def dump_stats(stats: TimingStats, out_path: str):
 def main(config: DictConfig):
     stats = TimingStats()
 
+    # >>> Config
+    ACTIVE_PERIOD_SEC = 10.0
+    TRACKING_BUDGET_SEC = 60.0  # stop when accumulated stage/tracking >= 60s
+
+    next_active_t = None  # schedule for periodic active (wall-clock)
+
     starts_axis = "z"
-    tracker = Tracker(text_prompt="A yellow object")
+    tracker = Tracker(text_prompt="A yellow object",show_tracker=False)
     recon = Reconstructor()
     est = GPISNBVv2()
 
     WINDOW_NAME = "Contact Data_left"
     controller = HardwarePlayer(config)
 
-    # --- deployment (not counted into tracking/re/active; if you want, you can time them too) ---
     controller.restore_all_models()
     controller.start_deployment()
 
@@ -111,8 +113,7 @@ def main(config: DictConfig):
     pcd = None
     rotating_now = "stop"
 
-    # count how many times ac(active) is used
-    ac_count = 0
+    ac_count = 0  # active times
 
     try:
         while True:
@@ -121,30 +122,42 @@ def main(config: DictConfig):
                 with timed(stats, "stage/tracking"):
                     key = tracker.tracking()
 
+                # quit immediately
                 if key == "quit":
                     cv2.destroyAllWindows()
                     controller.stop()
                     break
 
+                # >>> NEW: stop when tracking time reaches budget
+                tracking_used = stats.sums.get("stage/tracking", 0.0)
+                if tracking_used >= TRACKING_BUDGET_SEC:
+                    print(f"\n[STOP] stage/tracking reached {tracking_used:.3f}s "
+                          f"(budget={TRACKING_BUDGET_SEC:.1f}s). Exiting.")
+                    cv2.destroyAllWindows()
+                    controller.stop()
+                    break
+
+                # optional: keep manual reconstruct
                 if key == "reconstruct":
-                    # -------- reconstruct stage --------
                     with timed(stats, "stage/reconstruct"):
                         with timed(stats, "hand/reconstruct"):
                             controller.get_axis()
-
                         pcd = recon.reconstruct()
                         recon.show()
 
-                if key == "active":
+                # -------- periodic active trigger (every 10s wall-clock) --------
+                now = time.perf_counter()
+                if next_active_t is None:
+                    next_active_t = now + ACTIVE_PERIOD_SEC
+
+                if now >= next_active_t:
                     ac_count += 1
 
-                    # -------- active stage --------
                     with timed(stats, "stage/active"):
                         # (1) hand axis query
-                        # with timed(stats, "hand/active"):
-                        #     controller.get_axis()
                         controller.get_axis()
-                        # # (2) reconstruct
+
+                        # (2) online reconstruct (for NBV)
                         with timed(stats, "active/reconstruct"):
                             pcd = recon.reconstruct()
 
@@ -152,8 +165,7 @@ def main(config: DictConfig):
                         with timed(stats, "active/nbv_estimate"):
                             nbv = est.estimate(pcd, seed=0, verbose=True)
 
-                        # (4) NBV viz
-                        # with timed(stats, "active/nbv_viz"):
+                        # (4) NBV viz (not timed)
                         est.viz()
 
                         # (5) choose world axis
@@ -162,12 +174,15 @@ def main(config: DictConfig):
                                 tracker.T, tracker.init_pose, nbv["best_dir"]
                             )
 
-                        print(f"Active success! Turn to rotating along {axis_name[axis_idx]} from {rotating_now}")
+                        print(f"[Active@{ac_count}] Turn to rotating along {axis_name[axis_idx]} from {rotating_now}")
                         rotating_now = axis_name[axis_idx]
 
-                        # (6) hand set axis (actual command)
+                        # (6) hand set axis
                         with timed(stats, "active/hand_set_axis"):
                             controller.get_axis(rotating_now)
+
+                    # schedule next active after finishing current active
+                    next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
 
             else:
                 key = tracker.init_tracker()
@@ -176,19 +191,20 @@ def main(config: DictConfig):
                     controller.stop()
                     break
                 if key == "start":
-                    # this belongs to "tracking hand time" for your request
                     with timed(stats, "hand/tracking"):
                         controller.get_axis(starts_axis)
                     rotating_now = starts_axis
 
+                    # start periodic active schedule after tracking begins
+                    next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
+                    cv2.destroyAllWindows()
+
     finally:
-        # -------- print + save summary --------
         print("\n================ Timing Summary ================")
         for l in stats.summary_lines():
             print(l)
         print(f"\nac(active) used count = {ac_count}")
 
-        # save into current (Hydra) working directory
         out_json = os.path.join(os.getcwd(), "timing_stats.json")
         dump_stats(stats, out_json)
         print(f"Saved timing stats to: {out_json}")
