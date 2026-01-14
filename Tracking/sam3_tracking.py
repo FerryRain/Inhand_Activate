@@ -341,7 +341,7 @@ class Tracker:
                 print(f"[INIT] center3D(m): X={center3d[0]:.4f}, Y={center3d[1]:.4f}, Z={center3d[2]:.4f}")
             else:
                 print("[INIT] center3D failed; send init without ob_in_cam.")
-
+            self.init_pose = self.ob_in_cam.copy()
             self.id_str = f"{self.i:06d}"
             t_send0 = time.time()
             self.T, resp = self.send_frame_with_sock(
@@ -364,6 +364,8 @@ class Tracker:
 
             self.last_T = self.T
             self.i += 1
+
+            return "start"
 
         return
 
@@ -631,8 +633,8 @@ class Tracker:
 
     def make_ob_in_cam_from_center(self, center3d_m):
         T = np.eye(4, dtype=np.float32)
-        cos = np.cos(115.0 * math.pi / 180.0)
-        sin = np.sin(115.0 * math.pi / 180.0)
+        cos = np.cos(135.0 * math.pi / 180.0)
+        sin = np.sin(135.0 * math.pi / 180.0)
         rotation_x = np.array(
             [
                 [1, 0, 0],
@@ -718,7 +720,7 @@ class Tracker:
 
 
 if __name__ == "__main__":
-    tracker = Tracker()
+    tracker = Tracker(text_prompt="A yellow object")
 
     while True:
         if tracker.init_done:
