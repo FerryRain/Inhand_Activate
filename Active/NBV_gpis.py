@@ -17,6 +17,9 @@ import open3d as o3d
 import torch
 import gpytorch
 
+import open3d.visualization.gui as gui
+import open3d.visualization.rendering as rendering
+
 
 # ------------------------------ Repro ------------------------------
 def set_seed(seed: int = 0):
@@ -801,13 +804,179 @@ class GPISNBVv2:
         return self._last_nbv
 
 
+
+
+    def _get_camera_extrinsic(self, cam_pos, target_pos):
+        """
+        计算从 cam_pos 看向 target_pos 的相机外参矩阵 (World-to-Camera)
+        """
+        cam_pos = np.asarray(cam_pos)
+        target_pos = np.asarray(target_pos)
+
+        # 1. 计算前向量 (Z axis)
+        z_axis = target_pos - cam_pos
+        z_axis /= np.linalg.norm(z_axis)
+
+        # 2. 确定上向量 (Up)
+        up = np.array([0, 0, 1.0])
+        if abs(np.dot(up, z_axis)) > 0.99:  # 防止平行
+            up = np.array([0, 1.0, 0])
+
+        # 3. 计算右向量 (X axis) 和 修正后的上向量 (Y axis)
+        x_axis = np.cross(up, z_axis)
+        x_axis /= np.linalg.norm(x_axis)
+        y_axis = np.cross(z_axis, x_axis)
+
+        # 4. 构建 Camera-to-World 旋转平移矩阵 (R | t)
+        rot = np.eye(4)
+        rot[:3, 0] = x_axis
+        rot[:3, 1] = y_axis
+        rot[:3, 2] = z_axis
+        rot[:3, 3] = cam_pos
+
+        # 5. 返回外参 (World-to-Camera)
+        return np.linalg.inv(rot)
+
+    def viz_2(self):
+        """
+        美化版可视化：
+        - 物体：不透明灰色
+        - 评分球：半透明彩色
+        - NBV：绿色相机视锥体
+        """
+        if self.pcd is None or self.cam_pos is None or self.center is None:
+            raise RuntimeError("Missing data to visualize. Call estimate() first.")
+
+        # --- 1. 初始化 GUI 应用 ---
+        app = gui.Application.instance
+        app.initialize()
+
+        win = app.create_window("NBV Modern Visualization", 1280, 800)
+        scene_widget = gui.SceneWidget()
+        scene_widget.scene = rendering.Open3DScene(win.renderer)
+        win.add_child(scene_widget)
+
+        # --- 2. 创建材质 ---
+
+        # 物体材质: 建议先用 defaultUnlit（更“实”）
+        mat_obj = rendering.MaterialRecord()
+        mat_obj.shader = "defaultUnlit"
+        mat_obj.base_color = [0.8, 0.8, 0.8, 1.0]
+        mat_obj.point_size = 5.0  # 试 4~8，稀疏就大一点
+
+        # 评分点云材质: 半透明，不受光照影响 (让颜色更鲜艳)
+        mat_scores = rendering.MaterialRecord()
+        mat_scores.shader = "defaultUnlit"
+        mat_scores.base_color = [1.0, 1.0, 1.0, 0.3]  # 最后一位是 Alpha
+        mat_scores.has_alpha = True  # 必须开启此项以实现透明
+        mat_scores.point_size = 5.0  # 增加点的大小，形成云团感
+
+        # 不确定性体积材质 (可选)
+        mat_unc = rendering.MaterialRecord()
+        mat_unc.shader = "defaultUnlit"
+        mat_unc.base_color = [1.0, 1.0, 1.0, 0.4]
+        mat_unc.has_alpha = True
+        mat_unc.point_size = 3.0
+
+        # --- 3. 创建相机视锥体 (Frustum) ---
+        extrinsic = self._get_camera_extrinsic(self.cam_pos, self.center)
+        # 使用内参和外参创建一个视锥体线框
+        # 这里的 intrinsic 可以根据你的实际相机调整
+        intrinsic = o3d.camera.PinholeCameraIntrinsic(
+            1280, 800, 1000, 1000, 640, 400
+        )
+        frustum = o3d.geometry.LineSet.create_camera_visualization(
+            view_width_px=1280, view_height_px=800,
+            intrinsic=intrinsic.intrinsic_matrix,
+            extrinsic=extrinsic,
+            scale=0.02  # 控制相机模型的大小
+        )
+        frustum.paint_uniform_color([0.0, 1.0, 0.2])  # 亮绿色
+
+        # --- 4. 将几何体添加到场景 ---
+
+        # 添加物体
+        scene_widget.scene.add_geometry("object_pcd", self.pcd, mat_obj)
+
+        # 添加半透明评分球
+        if self.pcd_dirs is not None:
+            scene_widget.scene.add_geometry("direction_scores", self.pcd_dirs, mat_scores)
+
+        # 添加高不确定性区域
+        if self.pcd_unc is not None:
+            scene_widget.scene.add_geometry("uncertainty_vol", self.pcd_unc, mat_unc)
+
+        # 添加相机视锥体
+        mat_line = rendering.MaterialRecord()
+        mat_line.shader = "unlitLine"
+        mat_line.line_width = 2.0
+        scene_widget.scene.add_geometry("camera_frustum", frustum, mat_line)
+
+        # --- 5. 设置观察视角 ---
+
+        # --- 5. 设置观察视角 ---
+        bounds = self.pcd.get_axis_aligned_bounding_box()
+        scene_widget.setup_camera(60, bounds, self.center)
+
+        # 手动设置初始缩放：scale < 1 更近，scale > 1 更远
+        scale = 2  # 例如：0.65 更近一点；1.2 更远一点
+
+        extent = bounds.get_extent()
+        radius = 0.5 * float(np.linalg.norm(extent))  # 一个“场景半径”
+        cam = scene_widget.scene.camera
+
+        # 以 -Z 方向作为初始观察方向（你也可以换成别的方向）
+        front = np.array([0.0, 0.0, -1.0])
+        eye = np.asarray(self.center) - front * (radius / np.tan(np.deg2rad(60.0) * 0.5)) * scale
+        up = np.array([0.0, -1.0, 0.0])  # 你想要正向朝上可调
+
+        cam.look_at(self.center, eye, up)
+
+        # 设置渲染器背景色（深色背景更高级）
+        scene_widget.scene.set_background([0.1, 0.1, 0.1, 1.0])
+
+        # 辅助文字说明
+        print("[Visualizer] Green: NBV Camera Frustum")
+        print("[Visualizer] Transparent Sphere: Score distribution (Red=High)")
+        print("[Visualizer] Grey: Input Point Cloud")
+
+        # 运行
+        app.run()
+
+    def _get_lookat_matrix(self, cam_pos, target_pos):
+        """辅助函数：根据相机位置和目标位置计算位姿矩阵"""
+        cam_pos = np.asarray(cam_pos)
+        target_pos = np.asarray(target_pos)
+
+        z = target_pos - cam_pos
+        z /= np.linalg.norm(z)
+
+        # 粗略假设 Up 为 Z
+        up = np.array([0, 0, 1])
+        if abs(np.dot(up, z)) > 0.99:
+            up = np.array([0, 1, 0])
+
+        x = np.cross(up, z)
+        x /= np.linalg.norm(x)
+        y = np.cross(z, x)
+
+        rot = np.eye(4)
+        rot[:3, 0] = x
+        rot[:3, 1] = y
+        rot[:3, 2] = z
+        rot[:3, 3] = cam_pos
+
+        # Open3D 的 extrinsic 是 World-to-Camera
+        return np.linalg.inv(rot)
+
+
 # ------------------------------ minimal demo ------------------------------
 if __name__ == "__main__":
     import argparse
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--in_path", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/inhand_y.ply")
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001/normal/recon_0_000096_xyz_normal.ply")
     ap.add_argument("--no_viz", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
