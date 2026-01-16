@@ -234,21 +234,32 @@ def estimate_normals_for_icp(pcd: o3d.geometry.PointCloud, radius: float, max_nn
     return pcd
 
 
-def icp_multiscale(src_full, tgt_full, init_T, voxel_base, iters=(60, 90), verbose=False):
-    voxels = [2.0 * voxel_base, 1.0 * voxel_base]
+def icp_multiscale(src_full, tgt_full, init_T, voxel_base, iters=(80, 120, 160), verbose=False):
+    # 3-level coarse-to-fine
+    voxels = [4.0 * voxel_base, 2.0 * voxel_base, 1.0 * voxel_base]
     Ts = init_T.copy()
+
     for lvl, (vx, it) in enumerate(zip(voxels, iters)):
         src = preprocess_pcd(o3d.geometry.PointCloud(src_full), vx)
         tgt = preprocess_pcd(o3d.geometry.PointCloud(tgt_full), vx)
-        nr = max(2.0 * vx, 1e-3)
-        estimate_normals_for_icp(src, nr)
-        estimate_normals_for_icp(tgt, nr)
-        max_corr = 2.5 * vx
-        try:
-            loss = o3d.pipelines.registration.TukeyLoss(k=max_corr)
-            est = o3d.pipelines.registration.TransformationEstimationPointToPlane(loss)
-        except Exception:
-            est = o3d.pipelines.registration.TransformationEstimationPointToPlane()
+
+        # capture range: coarse larger
+        max_corr = 6.0 * vx if lvl == 0 else (4.0 * vx if lvl == 1 else 2.5 * vx)
+
+        if lvl == 0:
+            # coarse: point-to-point is more robust
+            est = o3d.pipelines.registration.TransformationEstimationPointToPoint()
+        else:
+            # fine: point-to-plane (needs normals)
+            nr = max(3.0 * vx, 1e-3)
+            estimate_normals_for_icp(src, nr)
+            estimate_normals_for_icp(tgt, nr)
+            try:
+                loss = o3d.pipelines.registration.TukeyLoss(k=max_corr)
+                est = o3d.pipelines.registration.TransformationEstimationPointToPlane(loss)
+            except Exception:
+                est = o3d.pipelines.registration.TransformationEstimationPointToPlane()
+
         reg = o3d.pipelines.registration.registration_icp(
             src, tgt,
             max_correspondence_distance=float(max_corr),
@@ -259,7 +270,9 @@ def icp_multiscale(src_full, tgt_full, init_T, voxel_base, iters=(60, 90), verbo
         Ts = reg.transformation
         if verbose:
             print(f"[ICP lvl{lvl}] voxel={vx:.6f} max_corr={max_corr:.6f} fitness={reg.fitness:.4f} rmse={reg.inlier_rmse:.6f}")
+
     return Ts
+
 
 
 # ============================================================
@@ -648,9 +661,9 @@ def strict_align_one_candidate(
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_002",
+    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_02_000",
                     help="dir containing normal/ and mesh/")
-    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/yellow_cylinder_01/GT",
+    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/green_cube_02/GT",
                     help="GT folder containing mesh/GT_mesh.stl and ply/GT_normal.ply")
     ap.add_argument("--fps", type=float, default=4.0, help="time_s = frame_id / fps")
 
@@ -670,8 +683,10 @@ def main():
     ap.add_argument("--align_mode", choices=["fixed_id", "search_best", "per_frame"], default="search_best",
                     help="fixed_id/search_best = strict ref then fixed T for all; per_frame = strict per-frame (slow)")
     ap.add_argument("--align_id", type=int, default=-1, help="fixed_id reference frame id; -1 means last")
-    ap.add_argument("--search_ids", type=str, default="100,200,-1",
+    ap.add_argument("--search_ids", type=str, default="102, 112, 122,147,-1",
                     help="search_best explicit ids, e.g. '100,200,-1' (-1 means last). If empty, uses --search_k uniform.")
+    ap.add_argument("--vis_ref_ids", type=str, default="102, 112, 122,147,-1",
+                    help="visualize strict alignment for ref candidates ids, e.g. '109,144,-1'")
     ap.add_argument("--search_k", type=int, default=7, help="search_best fallback candidate count (uniform + last)")
 
     ap.add_argument("--skip_mesh", action="store_true", help="skip mesh metrics")
@@ -685,8 +700,7 @@ def main():
     # ---- NEW: visualization options ----
     ap.add_argument("--vis_eval_ids", type=str, default="",
                     help="visualize final aligned eval results for ids, e.g. '100,120,-1' (-1 means last)")
-    ap.add_argument("--vis_ref_ids", type=str, default="100, 200, -1",
-                    help="visualize strict alignment for ref candidates ids, e.g. '109,144,-1'")
+
     ap.add_argument("--vis_voxel", type=float, default=0.002,
                     help="voxel downsample for visualization (0 disables)")
     ap.add_argument("--vis_mesh", action="store_true",default=True,

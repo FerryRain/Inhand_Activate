@@ -139,13 +139,13 @@ def main():
     parser.add_argument(
         "--in_dir",
         type=str,
-        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001",
+        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_small_001",
         help="Directory containing recon_0_*_xyz_ascii.ply",
     )
     parser.add_argument("--pattern", type=str, default="recon_0_*_xyz_ascii.ply")
 
     # threshold
-    parser.add_argument("--min_points_face", type=int, default=1000,
+    parser.add_argument("--min_points_face", type=int, default=1200,
                         help="If point count > this threshold, use external face; else use Open3D normals")
 
     # face
@@ -168,7 +168,7 @@ def main():
                         help="orient_normals_consistent_tangent_plane(k). Set 0 to disable.")
 
     # poisson params
-    parser.add_argument("--poisson_depth", type=int, default=9)
+    parser.add_argument("--poisson_depth", type=int, default=4)
     parser.add_argument("--density_quantile", type=float, default=0.01)
     parser.add_argument("--mesh_voxel", type=float, default=0.0, help="Optional voxel downsample before Poisson")
 

@@ -553,16 +553,16 @@ def print_normal_consistency(nc, name):
 # ============================================================
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--gt_pcd", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/data/cube/GT/ply/GT_normal.ply", help="GT point cloud (ply/pcd/xyz...)")
-    ap.add_argument("--gt_mesh", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/data/cube/GT/mesh/GT_mesh.stl", help="GT mesh (stl/ply/obj...)")
-    ap.add_argument("--rec_pcd", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_02/normal/recon_0_000147_xyz_normal.ply", help="Reconstructed point cloud")
-    ap.add_argument("--rec_mesh", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_02/mesh/recon_0_000147_xyz_normal_mesh.ply", help="Reconstructed mesh")
+    ap.add_argument("--gt_pcd", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/yellow_cylinder_small/GT/ply/GT_normal.ply", help="GT point cloud (ply/pcd/xyz...)")
+    ap.add_argument("--gt_mesh", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/yellow_cylinder_small/GT/mesh/GT_mesh.stl", help="GT mesh (stl/ply/obj...)")
+    ap.add_argument("--rec_pcd", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_small_001/normal/recon_0_000230_xyz_normal.ply", help="Reconstructed point cloud")
+    ap.add_argument("--rec_mesh", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_small_001/mesh/recon_0_000230_mesh.ply", help="Reconstructed mesh")
 
     # sampling for alignment / mesh metrics
-    ap.add_argument("--align_sample_n", type=int, default=200000,
+    ap.add_argument("--align_sample_n", type=int, default=20000,
                     help="If you choose alignment from mesh, number of samples")
     ap.add_argument("--align_sample_method", choices=["uniform", "poisson"], default="poisson")
-    ap.add_argument("--mesh_metric_samples", type=int, default=200000,
+    ap.add_argument("--mesh_metric_samples", type=int, default=20000,
                     help="Surface samples per mesh for mesh↔mesh metrics")
     ap.add_argument("--mesh_sample_method", choices=["uniform", "poisson"], default="poisson")
 

@@ -416,14 +416,16 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/green_cube_00_001",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/yellow_cylinder_small_001",
                     help="debug_dir that contains keyframes/")
+    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_small_001", help="output directory")
+
     ap.add_argument("--K_path", type=str,
                     default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",
                     help="3x3 intrinsic matrix txt")
 
     # windows by seconds -> frames by fps
-    ap.add_argument("--fps", type=float, default=3.2, help="recorded fps (frames per second)")
+    ap.add_argument("--fps", type=float, default=5, help="recorded fps (frames per second)")
     ap.add_argument("--window_seconds", type=float, default=1, help="save cumulative recon every N seconds")
     ap.add_argument("--include_endpoint", default=True, action=argparse.BooleanOptionalAction,
                     help="If True: end_frame=round(k*window_seconds*fps). "
@@ -474,7 +476,7 @@ def main():
     ap.add_argument("--dbscan_min_points", type=int, default=100)
 
     # outputs
-    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001", help="output directory")
+
     ap.add_argument("--xyz_down_voxel", type=float, default=0.004, help="voxel size for xyz-only downsampled cloud")
 
     # visualization
