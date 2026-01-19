@@ -139,7 +139,7 @@ def main():
     parser.add_argument(
         "--in_dir",
         type=str,
-        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_small_001",
+        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003/",
         help="Directory containing recon_0_*_xyz_ascii.ply",
     )
     parser.add_argument("--pattern", type=str, default="recon_0_*_xyz_ascii.ply")

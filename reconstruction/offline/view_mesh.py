@@ -8,7 +8,7 @@ import open3d as o3d
 def main():
 
 
-    path = "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001/mesh/recon_0_000198_mesh.ply"
+    path = "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003/mesh/recon_0_000180_mesh.ply"
     if not os.path.isfile(path):
         print(f"[Error] 找不到文件: {path}")
         return

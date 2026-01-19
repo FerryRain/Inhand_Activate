@@ -416,9 +416,9 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/yellow_cylinder_small_001",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/10s_active/tetraprism/003",
                     help="debug_dir that contains keyframes/")
-    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_small_001", help="output directory")
+    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003", help="output directory")
 
     ap.add_argument("--K_path", type=str,
                     default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",
@@ -477,7 +477,7 @@ def main():
 
     # outputs
 
-    ap.add_argument("--xyz_down_voxel", type=float, default=0.004, help="voxel size for xyz-only downsampled cloud")
+    ap.add_argument("--xyz_down_voxel", type=float, default=0.001, help="voxel size for xyz-only downsampled cloud")
 
     # visualization
     ap.add_argument("--no_vis", default=True, action=argparse.BooleanOptionalAction)

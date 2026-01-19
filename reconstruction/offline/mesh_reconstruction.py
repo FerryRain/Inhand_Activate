@@ -84,7 +84,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Reconstruct mesh from normal-bearing point cloud (Poisson)."
     )
-    parser.add_argument("--input", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_002/normal/recon_0_000095_xyz_normal.ply", help="Input point cloud (.ply/.pcd/.npy ...)")
+    parser.add_argument("--input", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001_down0.01/normal/recon_0_000244_xyz_normal.ply", help="Input point cloud (.ply/.pcd/.npy ...)")
     parser.add_argument(
         "output",
         type=str,
