@@ -691,9 +691,9 @@ def build_gt_cache_entry(
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_purple/001_ICP",
+    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_01/002_ICP",
                     help="dir containing pcd_online/, pcd/, mesh/, mesh_nksr/")
-    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube_purple/GT",
+    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube_obj_01/GT",
                     help="GT folder containing mesh/GT_mesh.stl and ply/GT_normal.ply")
     ap.add_argument("--fps", type=float, default=20, help="time_s = frame_id / fps")
 
