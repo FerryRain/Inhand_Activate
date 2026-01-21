@@ -21,6 +21,7 @@ import cv2
 
 from reconstruction.Reconstructor import Reconstructor
 from Tracking.sam3_tracking import Tracker
+# from Tracking.tracker import Tracker
 from Active.NBV_gpis import GPISNBVv2
 from LeapHand_rotation.isaacgymenvs.hand_controller import HardwarePlayer
 
@@ -86,18 +87,19 @@ def main(config: DictConfig):
     stats = TimingStats()
 
     # >>> Config
-    ACTIVE_PERIOD_SEC = 10.0
+    ACTIVE_PERIOD_SEC = 15.0
     TRACKING_BUDGET_SEC = 60.0  # stop when accumulated stage/tracking >= 60s
 
     next_active_t = None  # schedule for periodic active (wall-clock)
 
     starts_axis = "z"
-    tracker = Tracker(text_prompt="A yellow object",show_tracker=False)
+    tracker = Tracker(text_prompt="A green object",show_tracker=False, k4a_color_res="720P")
+    # tracker = Tracker(show_tracker=False, k4a_color_res="720P")
     recon = Reconstructor()
     est = GPISNBVv2()
 
     WINDOW_NAME = "Contact Data_left"
-    controller = HardwarePlayer(config)
+    controller = HardwarePlayer(config, com="/dev/ttyUSB0")
 
     controller.restore_all_models()
     controller.start_deployment()

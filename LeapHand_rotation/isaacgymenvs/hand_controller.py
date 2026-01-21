@@ -61,7 +61,7 @@ def temporal_filter(new_frame, prev_frame, alpha=0.2):
 
 class HardwarePlayer(object):
     # @hydra.main(config_name='config', config_path='cfg')
-    def __init__(self, config):
+    def __init__(self, config, com="/dev/ttyUSB1"):
         self.image_queue = queue.Queue(maxsize=1)
         self.config = OmegaConf.to_container(config, resolve=True)
 
@@ -112,7 +112,7 @@ class HardwarePlayer(object):
         self.is_running = False
 
         try:
-            self.serDev = serial.Serial('/dev/ttyUSB0', 2000000, timeout=1)
+            self.serDev = serial.Serial(com, 2000000, timeout=1)
             self.serDev.flush()
             
             self.serialThread = threading.Thread(target=self._readThread)

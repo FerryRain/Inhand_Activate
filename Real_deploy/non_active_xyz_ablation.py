@@ -7,6 +7,8 @@
 """
 
 import os
+from idlelib.configdialog import changes
+
 os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 
 import time
@@ -86,12 +88,12 @@ def main(config: DictConfig):
     stats = TimingStats()
 
     # >>> Config
-    ACTIVE_PERIOD_SEC = 10.0
+    ACTIVE_PERIOD_SEC = 20
     TRACKING_BUDGET_SEC = 60.0  # stop when accumulated stage/tracking >= 60s
 
     next_active_t = None  # schedule for periodic active (wall-clock)
-
-    starts_axis = "y"
+    next_active_t_2 = None
+    starts_axis = "z"
     tracker = Tracker(text_prompt="A purple object",show_tracker=False)
     recon = Reconstructor()
     est = GPISNBVv2()
@@ -114,7 +116,7 @@ def main(config: DictConfig):
     rotating_now = "stop"
 
     ac_count = 0  # active times
-
+    change_count = 0
     try:
         while True:
             if tracker.init_done:
@@ -148,41 +150,21 @@ def main(config: DictConfig):
                 # -------- periodic active trigger (every 10s wall-clock) --------
                 now = time.perf_counter()
                 if next_active_t is None:
+                    next_active_t_2 = now + 2 * ACTIVE_PERIOD_SEC
                     next_active_t = now + ACTIVE_PERIOD_SEC
+                    change_count +=1
+                    pass
 
-                # if now >= next_active_t:
-                #     ac_count += 1
-                #
-                #     with timed(stats, "stage/active"):
-                #         # (1) hand axis query
-                #         controller.get_axis()
-                #
-                #         # (2) online reconstruct (for NBV)
-                #         with timed(stats, "active/reconstruct"):
-                #             pcd = recon.reconstruct()
-                #
-                #         # (3) NBV estimate
-                #         with timed(stats, "active/nbv_estimate"):
-                #             nbv = est.estimate(pcd, seed=0, verbose=True)
-                #
-                #         # (4) NBV viz (not timed)
-                #         est.viz()
-                #
-                #         # (5) choose world axis
-                #         with timed(stats, "active/pick_axis"):
-                #             axis_idx, rvec_W, aW, vW, T_WO, T_WC = pick_world_axis_and_rvec(
-                #                 tracker.T, tracker.init_pose, nbv["best_dir"]
-                #             )
-                #
-                #         print(f"[Active@{ac_count}] Turn to rotating along {axis_name[axis_idx]} from {rotating_now}")
-                #         rotating_now = axis_name[axis_idx]
-                #
-                #         # (6) hand set axis
-                #         with timed(stats, "active/hand_set_axis"):
-                #             controller.get_axis(rotating_now)
-                #
-                #     # schedule next active after finishing current active
-                #     next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
+                if now >= next_active_t and now < next_active_t_2:
+                    controller.get_axis("")
+                    # print("change")
+                    controller.get_axis("x")
+                elif now >= next_active_t_2 and change_count !=2:
+                    controller.get_axis("")
+                    print("change")
+                    controller.get_axis("y")
+                    change_count = 2
+
 
             else:
                 key = tracker.init_tracker()
@@ -196,7 +178,7 @@ def main(config: DictConfig):
                     rotating_now = starts_axis
 
                     # start periodic active schedule after tracking begins
-                    next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
+                    # next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
                     cv2.destroyAllWindows()
 
     finally:

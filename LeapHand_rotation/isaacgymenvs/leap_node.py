@@ -26,7 +26,7 @@ class LeapNode:
         ####Some parameters
         # I recommend you keep the current limit from 350 for the lite, and 550 for the full hand
         # Increase KP if the hand is too weak, decrease if it's jittery.
-        self.kP = 350
+        self.kP = 250
         self.kI = 0
         self.kD = 200
         self.curr_lim = 550  ##set this to 550 if you are using full motors!!!!
@@ -49,7 +49,7 @@ class LeapNode:
         self.dxl_client.sync_write(motors, np.ones(len(motors))*5, 11, 1)
         self.dxl_client.set_torque_enabled(motors, True)
         self.dxl_client.sync_write(motors, np.ones(len(motors)) * self.kP, 84, 2) # Pgain stiffness
-        self.dxl_client.sync_write([12,13,14,15], np.ones(4) * (self.kP * 1.25), 84, 2) # Pgain stiffness for side to side should be a bit less  
+        self.dxl_client.sync_write([12,13,14,15], np.ones(4) * (self.kP * 1.25), 84, 2) # Pgain stiffness for side to side should be a bit less
         self.dxl_client.sync_write([0,4,8], np.ones(3) * (self.kP * 0.75), 84, 2) # Pgain stiffness for side to side should be a bit less
         self.dxl_client.sync_write(motors, np.ones(len(motors)) * self.kI, 82, 2) # Igain
         self.dxl_client.sync_write(motors, np.ones(len(motors)) * self.kD, 80, 2) # Dgain damping

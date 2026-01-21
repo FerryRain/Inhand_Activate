@@ -720,7 +720,7 @@ class Tracker:
 
 
 if __name__ == "__main__":
-    tracker = Tracker(text_prompt="A yellow object")
+    tracker = Tracker(text_prompt="An orange object")
 
     while True:
         if tracker.init_done:
