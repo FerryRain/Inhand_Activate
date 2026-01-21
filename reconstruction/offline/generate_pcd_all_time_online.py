@@ -416,16 +416,16 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/10s_active/tetraprism/003",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking/Big_Cylinder/003",
                     help="debug_dir that contains keyframes/")
-    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003", help="output directory")
+    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/Big_Cylinder/003_ICP", help="output directory")
 
     ap.add_argument("--K_path", type=str,
                     default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",
                     help="3x3 intrinsic matrix txt")
 
     # windows by seconds -> frames by fps
-    ap.add_argument("--fps", type=float, default=5, help="recorded fps (frames per second)")
+    ap.add_argument("--fps", type=float, default=20, help="recorded fps (frames per second)")
     ap.add_argument("--window_seconds", type=float, default=1, help="save cumulative recon every N seconds")
     ap.add_argument("--include_endpoint", default=True, action=argparse.BooleanOptionalAction,
                     help="If True: end_frame=round(k*window_seconds*fps). "
@@ -518,7 +518,7 @@ def main():
     min_frame_id = fid_items[0][0]
     max_frame_id = fid_items[-1][0]
     has_zero = any(fr == 0 for fr, _ in fid_items)
-    args.out_dir = os.path.join(args.out_dir, f"pcd")
+    args.out_dir = os.path.join(args.out_dir, f"pcd_online")
     os.makedirs(args.out_dir, exist_ok=True)
 
     K = load_K_txt(args.K_path)

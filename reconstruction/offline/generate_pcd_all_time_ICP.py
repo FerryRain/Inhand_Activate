@@ -517,7 +517,7 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking/cube_obj_01/002",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking/cube_purple/001",
                     help="debug_dir that contains keyframes/")
     ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_01/002_ICP", help="output directory")
 
@@ -591,9 +591,9 @@ def main():
                     help="Use multi-scale ICP with voxel x{4,2,1}.")
     ap.add_argument("--icp_max_corr", type=float, default=0.001,
                     help="Max correspondence distance in meters. <0 means auto from voxel.")
-    ap.add_argument("--icp_max_iter", type=int, default=400,
+    ap.add_argument("--icp_max_iter", type=int, default=600,
                     help="Max ICP iterations per scale.")
-    ap.add_argument("--icp_min_fitness", type=float, default=0.10,
+    ap.add_argument("--icp_min_fitness", type=float, default=0.30,
                     help="Reject ICP update if fitness is below this threshold.")
     ap.add_argument("--icp_verbose", default=True, action=argparse.BooleanOptionalAction,
                     help="Print ICP fitness/rmse per frame.")

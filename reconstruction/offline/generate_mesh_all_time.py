@@ -139,13 +139,13 @@ def main():
     parser.add_argument(
         "--in_dir",
         type=str,
-        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003/",
+        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_purple/001_ICP",
         help="Directory containing recon_0_*_xyz_ascii.ply",
     )
     parser.add_argument("--pattern", type=str, default="recon_0_*_xyz_ascii.ply")
 
     # threshold
-    parser.add_argument("--min_points_face", type=int, default=1200,
+    parser.add_argument("--min_points_face", type=int, default=2200,
                         help="If point count > this threshold, use external face; else use Open3D normals")
 
     # face

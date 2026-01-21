@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+@FileName：plot_nskr.py
+@Description：
+@Author：Ferry
+@Time：2026 1/21/26 6:11 PM
+@Copyright：©2024-2026 ShanghaiTech University-RIMLAB
+"""
 import os
 import argparse
 import numpy as np
@@ -39,7 +46,7 @@ def value_at_time_interp(t: np.ndarray, y: np.ndarray, t0: float):
     return float(np.interp(t0, tt, yy))
 
 
-def format_label(name: str, best_v, best_t, v30, unit: str, t_mark: float):
+def format_label(name: str, best_v, best_t, vmark, unit: str, t_mark: float):
     def fmt_v(v):
         return "NA" if v is None or (not np.isfinite(v)) else f"{v:.4f}"
 
@@ -47,7 +54,7 @@ def format_label(name: str, best_v, best_t, v30, unit: str, t_mark: float):
         return "NA" if v is None or (not np.isfinite(v)) else f"{v:.2f}s"
 
     u = f" {unit}" if unit else ""
-    return f"{name} | best={fmt_v(best_v)}{u} @ {fmt_t(best_t)} | t={t_mark:.0f}s={fmt_v(v30)}{u}"
+    return f"{name} | best={fmt_v(best_v)}{u} @ {fmt_t(best_t)} | t={t_mark:.0f}s={fmt_v(vmark)}{u}"
 
 
 def plot_group(
@@ -103,8 +110,6 @@ def plot_group(
     ax.set_ylabel(y_label)
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
-
-    # only show 0..t_max
     ax.set_xlim(0.0, float(t_max))
 
     if any_plotted:
@@ -128,13 +133,13 @@ def plot_group(
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_purple/001_ICP/eval_strictref/summary.csv")
+    ap.add_argument("--csv", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/Big_Cylinder/003_ICP/eval_strictref/summary.csv")
     ap.add_argument("--out_dir", default="", help="default: <csv_dir>/plots_marks_legend")
     ap.add_argument("--dpi", type=int, default=200)
     ap.add_argument("--t_mark", type=float, default=30.0, help="draw dashed line at this exact time (seconds)")
     ap.add_argument("--t_max", type=float, default=60.0, help="plot x-axis range: [0, t_max]")
     ap.add_argument("--legend_loc", default="best")
-    ap.add_argument("--legend_fontsize", type=int, default=8)
+    ap.add_argument("--legend_fontsize", type=int, default= 8)
     args = ap.parse_args()
 
     csv_path = os.path.expanduser(args.csv)
@@ -159,30 +164,100 @@ def main():
     out_dir = os.path.expanduser(args.out_dir) if args.out_dir else os.path.join(csv_dir, "plots_marks_legend")
     os.makedirs(out_dir, exist_ok=True)
 
+    # ------------------------------------------------------------------
+    # Column presets (support BOTH old summary + new NKSR summary)
+    #
+    # OLD:
+    #   pcd_pcd_* (pcd vs gt)
+    #   mesh_mesh_* (mesh vs gt or mesh vs mesh depending old script)
+    #
+    # NEW (your updated evaluator):
+    #   online_pcd_vs_gt_*
+    #   offline_pcd_vs_gt_*
+    #   mesh_vs_gt_*
+    #   nksr_vs_mesh_*
+    # ------------------------------------------------------------------
+
+    # Distances (mm): accuracy / completeness
     fig1_cols = [
+        # old
         "pcd_pcd_accuracy_mean",
         "pcd_pcd_completeness_mean",
         "mesh_mesh_accuracy_mean",
         "mesh_mesh_completeness_mean",
+        # new meshes
+        "mesh_vs_gt_accuracy_mean",
+        "mesh_vs_gt_completeness_mean",
+        "nksr_vs_mesh_accuracy_mean",
+        "nksr_vs_mesh_completeness_mean",
+        # new pcds
+        "online_pcd_vs_gt_accuracy_mean",
+        "online_pcd_vs_gt_completeness_mean",
+        "offline_pcd_vs_gt_accuracy_mean",
+        "offline_pcd_vs_gt_completeness_mean",
     ]
+
+    # F@5mm
     fig2_cols = [
+        # old
         "pcd_pcd_fscore@0.005000",
         "mesh_mesh_fscore@0.005000",
+        # new meshes
+        "mesh_vs_gt_fscore@0.005000",
+        "nksr_vs_mesh_fscore@0.005000",
+        # new pcds
+        "online_pcd_vs_gt_fscore@0.005000",
+        "offline_pcd_vs_gt_fscore@0.005000",
     ]
+
+    # PCD F-scores @ 2/5/10mm (OLD + NEW online/offline)
     fig3_cols = [
-        "pcd_pcd_fscore@0.002000",
+        # old
+        "pcd_pcd_fscore@0.001000",
         "pcd_pcd_fscore@0.005000",
-        "pcd_pcd_fscore@0.010000",
+        "pcd_pcd_fscore@0.000500",
+        # new online
+        "online_pcd_vs_gt_fscore@0.001000",
+        "online_pcd_vs_gt_fscore@0.005000",
+        "online_pcd_vs_gt_fscore@0.000500",
+        # new offline
+        "offline_pcd_vs_gt_fscore@0.001000",
+        "offline_pcd_vs_gt_fscore@0.005000",
+        "offline_pcd_vs_gt_fscore@0.000500",
     ]
+
+    # Mesh metrics F-scores @ 2/5/10mm (old mesh_mesh + new mesh_vs_gt)
     fig4_cols = [
-        "mesh_mesh_fscore@0.002000",
+        # old mesh-mesh
+        "mesh_mesh_fscore@0.001000",
         "mesh_mesh_fscore@0.005000",
-        "mesh_mesh_fscore@0.010000",
+        "mesh_mesh_fscore@0.000500",
+        # new mesh vs GT
+        "mesh_vs_gt_fscore@0.001000",
+        "mesh_vs_gt_fscore@0.005000",
+        "mesh_vs_gt_fscore@0.000500",
+    ]
+
+    # NKSR mesh2mesh F-scores (nksr_vs_mesh)
+    fig5_cols = [
+        "nksr_vs_mesh_fscore@0.001000",
+        "nksr_vs_mesh_fscore@0.005000",
+        "nksr_vs_mesh_fscore@0.000500",
+    ]
+
+    # NEW: Online vs Offline (same thresholds) - makes comparison obvious
+    fig6_cols = [
+        "online_pcd_vs_gt_fscore@0.001000",
+        "offline_pcd_vs_gt_fscore@0.001000",
+        "online_pcd_vs_gt_fscore@0.005000",
+        "offline_pcd_vs_gt_fscore@0.005000",
+        "online_pcd_vs_gt_fscore@0.000500",
+        "offline_pcd_vs_gt_fscore@0.000500",
     ]
 
     plot_group(
         df, t, fig1_cols,
-        title="Accuracy / Completeness",
+        title="Accuracy / Completeness (distance)  [PCD + Mesh + NKSR]",
         y_label="Distance (mm)",
         best_mode="min",
         to_mm=True,
@@ -196,7 +271,7 @@ def main():
 
     plot_group(
         df, t, fig2_cols,
-        title="F-score @ 5mm",
+        title="F-score @ 5mm  [PCD + Mesh + NKSR]",
         y_label="F-score",
         best_mode="max",
         to_mm=False,
@@ -210,7 +285,7 @@ def main():
 
     plot_group(
         df, t, fig3_cols,
-        title="PCD-PCD F-score @ 2/5/10mm",
+        title="PCD F-score @ 1/5/0.5mm (old pcd_pcd + new online/offline)",
         y_label="F-score",
         best_mode="max",
         to_mm=False,
@@ -224,7 +299,7 @@ def main():
 
     plot_group(
         df, t, fig4_cols,
-        title="Mesh-Mesh F-score @ 2/5/10mm",
+        title="Mesh metrics F-score @ 1/5/0.5mm (Mesh-vs-Mesh or Mesh-vs-GT)",
         y_label="F-score",
         best_mode="max",
         to_mm=False,
@@ -236,11 +311,41 @@ def main():
         legend_fontsize=args.legend_fontsize,
     )
 
-    print(f"[SAVED] 4 figures -> {out_dir}")
+    plot_group(
+        df, t, fig5_cols,
+        title="NKSR Mesh2Mesh F-score @ 1/5/0.5mm (NKSR vs Original Mesh)",
+        y_label="F-score",
+        best_mode="max",
+        to_mm=False,
+        out_path=os.path.join(out_dir, "fig5_nksr_mesh2mesh_fscores.png"),
+        t_mark=args.t_mark,
+        t_max=args.t_max,
+        dpi=args.dpi,
+        legend_loc=args.legend_loc,
+        legend_fontsize=args.legend_fontsize,
+    )
+
+    plot_group(
+        df, t, fig6_cols,
+        title="Online vs Offline PCD (F-score @ 1/5/0.5mm)",
+        y_label="F-score",
+        best_mode="max",
+        to_mm=False,
+        out_path=os.path.join(out_dir, "fig6_online_vs_offline_pcd_fscores.png"),
+        t_mark=args.t_mark,
+        t_max=args.t_max,
+        dpi=args.dpi,
+        legend_loc=args.legend_loc,
+        legend_fontsize=args.legend_fontsize,
+    )
+
+    print(f"[SAVED] 6 figures -> {out_dir}")
     print("  - fig1_acc_comp_mm.png")
     print("  - fig2_fscore_5mm.png")
     print("  - fig3_pcd_fscores.png")
     print("  - fig4_mesh_fscores.png")
+    print("  - fig5_nksr_mesh2mesh_fscores.png")
+    print("  - fig6_online_vs_offline_pcd_fscores.png")
 
 
 if __name__ == "__main__":

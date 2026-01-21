@@ -661,11 +661,11 @@ def strict_align_one_candidate(
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_02_000",
+    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_purple/001_ICP",
                     help="dir containing normal/ and mesh/")
-    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/green_cube_02/GT",
+    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube_purple/GT",
                     help="GT folder containing mesh/GT_mesh.stl and ply/GT_normal.ply")
-    ap.add_argument("--fps", type=float, default=4.0, help="time_s = frame_id / fps")
+    ap.add_argument("--fps", type=float, default=20, help="time_s = frame_id / fps")
 
     ap.add_argument("--thresholds_mm", type=str, default="2,5,10", help="fscore thresholds (mm)")
     ap.add_argument("--pick_tau_mm", type=float, default=5.0, help="ref selection tau (mm) using Precision@tau")
@@ -674,8 +674,8 @@ def main():
     ap.add_argument("--gt_scale", type=float, default=1.0)
     ap.add_argument("--no_auto_unit", action="store_true")
     ap.add_argument("--no_auto_voxel", action="store_true")
-    ap.add_argument("--voxel", type=float, default=0.003, help="fallback voxel if auto_voxel disabled")
-    ap.add_argument("--eval_voxel", type=float, default=0.002, help="downsample voxel for pcd metrics (0 disables)")
+    ap.add_argument("--voxel", type=float, default=0.005, help="fallback voxel if auto_voxel disabled")
+    ap.add_argument("--eval_voxel", type=float, default=0.005, help="downsample voxel for pcd metrics (0 disables)")
     ap.add_argument("--icp_iter0", type=int, default=60)
     ap.add_argument("--icp_iter1", type=int, default=90)
     ap.add_argument("--verbose_icp", action="store_true")
@@ -683,9 +683,9 @@ def main():
     ap.add_argument("--align_mode", choices=["fixed_id", "search_best", "per_frame"], default="search_best",
                     help="fixed_id/search_best = strict ref then fixed T for all; per_frame = strict per-frame (slow)")
     ap.add_argument("--align_id", type=int, default=-1, help="fixed_id reference frame id; -1 means last")
-    ap.add_argument("--search_ids", type=str, default="102, 112, 122,147,-1",
-                    help="search_best explicit ids, e.g. '100,200,-1' (-1 means last). If empty, uses --search_k uniform.")
-    ap.add_argument("--vis_ref_ids", type=str, default="102, 112, 122,147,-1",
+    ap.add_argument("--search_ids", type=str, default="100,200, 300,400, 600, 800, 1000,-1",
+                    help="search_best explicit ids, e.g. '100,200,-1' '200, 400, 600, 800, 1000,-1' (-1 means last). If empty, uses --search_k uniform.")
+    ap.add_argument("--vis_ref_ids", type=str, default="100,200, 300,400, 600, 800, 1000,-1",
                     help="visualize strict alignment for ref candidates ids, e.g. '109,144,-1'")
     ap.add_argument("--search_k", type=int, default=7, help="search_best fallback candidate count (uniform + last)")
 
