@@ -188,8 +188,8 @@ def main():
         # new meshes
         "mesh_vs_gt_accuracy_mean",
         "mesh_vs_gt_completeness_mean",
-        "nksr_vs_mesh_accuracy_mean",
-        "nksr_vs_mesh_completeness_mean",
+        "nksr_vs_gt_accuracy_mean",
+        "nksr_vs_gt_completeness_mean",
         # new pcds
         "online_pcd_vs_gt_accuracy_mean",
         "online_pcd_vs_gt_completeness_mean",
@@ -204,7 +204,7 @@ def main():
         "mesh_mesh_fscore@0.005000",
         # new meshes
         "mesh_vs_gt_fscore@0.005000",
-        "nksr_vs_mesh_fscore@0.005000",
+        "nksr_vs_gt_fscore@0.005000",
         # new pcds
         "online_pcd_vs_gt_fscore@0.005000",
         "offline_pcd_vs_gt_fscore@0.005000",
@@ -213,46 +213,46 @@ def main():
     # PCD F-scores @ 2/5/10mm (OLD + NEW online/offline)
     fig3_cols = [
         # old
-        "pcd_pcd_fscore@0.001000",
+        "pcd_pcd_fscore@0.002000",
         "pcd_pcd_fscore@0.005000",
-        "pcd_pcd_fscore@0.000500",
+        "pcd_pcd_fscore@0.010000",
         # new online
-        "online_pcd_vs_gt_fscore@0.001000",
+        "online_pcd_vs_gt_fscore@0.002000",
         "online_pcd_vs_gt_fscore@0.005000",
-        "online_pcd_vs_gt_fscore@0.000500",
+        "online_pcd_vs_gt_fscore@0.010000",
         # new offline
-        "offline_pcd_vs_gt_fscore@0.001000",
+        "offline_pcd_vs_gt_fscore@0.002000",
         "offline_pcd_vs_gt_fscore@0.005000",
-        "offline_pcd_vs_gt_fscore@0.000500",
+        "offline_pcd_vs_gt_fscore@0.010000",
     ]
 
     # Mesh metrics F-scores @ 2/5/10mm (old mesh_mesh + new mesh_vs_gt)
     fig4_cols = [
         # old mesh-mesh
-        "mesh_mesh_fscore@0.001000",
+        "mesh_mesh_fscore@0.002000",
         "mesh_mesh_fscore@0.005000",
-        "mesh_mesh_fscore@0.000500",
+        "mesh_mesh_fscore@0.010000",
         # new mesh vs GT
-        "mesh_vs_gt_fscore@0.001000",
+        "mesh_vs_gt_fscore@0.002000",
         "mesh_vs_gt_fscore@0.005000",
-        "mesh_vs_gt_fscore@0.000500",
+        "mesh_vs_gt_fscore@0.010000",
     ]
 
     # NKSR mesh2mesh F-scores (nksr_vs_mesh)
     fig5_cols = [
-        "nksr_vs_mesh_fscore@0.001000",
-        "nksr_vs_mesh_fscore@0.005000",
-        "nksr_vs_mesh_fscore@0.000500",
+        "nksr_vs_gt_fscore@0.002000",
+        "nksr_vs_gt_fscore@0.005000",
+        "nksr_vs_gt_fscore@0.010000",
     ]
 
     # NEW: Online vs Offline (same thresholds) - makes comparison obvious
     fig6_cols = [
-        "online_pcd_vs_gt_fscore@0.001000",
-        "offline_pcd_vs_gt_fscore@0.001000",
+        "online_pcd_vs_gt_fscore@0.002000",
+        "offline_pcd_vs_gt_fscore@0.002000",
         "online_pcd_vs_gt_fscore@0.005000",
         "offline_pcd_vs_gt_fscore@0.005000",
-        "online_pcd_vs_gt_fscore@0.000500",
-        "offline_pcd_vs_gt_fscore@0.000500",
+        "online_pcd_vs_gt_fscore@0.010000",
+        "offline_pcd_vs_gt_fscore@0.010000",
     ]
 
     plot_group(
@@ -285,7 +285,7 @@ def main():
 
     plot_group(
         df, t, fig3_cols,
-        title="PCD F-score @ 1/5/0.5mm (old pcd_pcd + new online/offline)",
+        title="PCD F-score @ 2/5/10mm (old pcd_pcd + new online/offline)",
         y_label="F-score",
         best_mode="max",
         to_mm=False,
@@ -299,7 +299,7 @@ def main():
 
     plot_group(
         df, t, fig4_cols,
-        title="Mesh metrics F-score @ 1/5/0.5mm (Mesh-vs-Mesh or Mesh-vs-GT)",
+        title="Mesh metrics F-score @ 2/5/10mm (Mesh-vs-Mesh or Mesh-vs-GT)",
         y_label="F-score",
         best_mode="max",
         to_mm=False,
@@ -313,7 +313,7 @@ def main():
 
     plot_group(
         df, t, fig5_cols,
-        title="NKSR Mesh2Mesh F-score @ 1/5/0.5mm (NKSR vs Original Mesh)",
+        title="NKSR Mesh2Mesh F-score @ 2/5/10mm (NKSR vs Original Mesh)",
         y_label="F-score",
         best_mode="max",
         to_mm=False,
@@ -327,7 +327,7 @@ def main():
 
     plot_group(
         df, t, fig6_cols,
-        title="Online vs Offline PCD (F-score @ 1/5/0.5mm)",
+        title="Online vs Offline PCD (F-score @ 2/5/10mm)",
         y_label="F-score",
         best_mode="max",
         to_mm=False,

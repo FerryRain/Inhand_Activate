@@ -138,7 +138,7 @@ def main():
     parser.add_argument("--normal_subdir", type=str, default="normal", help="Subfolder name under root.")
     parser.add_argument("--out_dir", type=str, default="", help="Output directory. Default: <root>/nksr_mesh_<mode>")
 
-    parser.add_argument("--mode", type=str, choices=["voxel", "detail"], default="detail",
+    parser.add_argument("--mode", type=str, choices=["voxel", "detail"], default="voxel",
                         help="Choose exactly one: voxel or detail.")
     parser.add_argument("--voxel_size", type=float, default=0.0050, help="Used only when --mode voxel.")
     parser.add_argument("--detail_level", type=float, default=0.4, help="Used only when --mode detail.")

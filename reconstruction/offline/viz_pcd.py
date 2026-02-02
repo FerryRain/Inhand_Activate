@@ -44,7 +44,10 @@ def auto_axis_size(pcd: o3d.geometry.PointCloud) -> float:
 
 def main():
     parser = argparse.ArgumentParser(description="Simple point cloud viewer (Open3D).")
-    parser.add_argument("-i", "--input", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/filtered_object_frame.ply", help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
+    # parser.add_argument("-i", "--input", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_01/003_ICP/pcd/recon_0_000600.ply", help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
+    parser.add_argument("-i", "--input",
+                        default="/home/ferry/data/Code2/Research/Inhand_Activate/demo/results/process_pcd/Cross.ply",
+                        help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
 
     parser.add_argument("--voxel", type=float, default=0.0, help="Voxel downsample size (e.g. 0.002). 0 = disable.")
     parser.add_argument("--random", type=int, default=0, help="Random sample N points (e.g. 200000). 0 = disable.")
@@ -52,11 +55,11 @@ def main():
     parser.add_argument("--show-axis", action="store_true", help="Show coordinate frame.")
     parser.add_argument("--axis-size", type=float, default=0.0, help="Coordinate frame size. 0 = auto.")
 
-    parser.add_argument("--point-size", type=float, default=2.0, help="Initial point size.")
+    parser.add_argument("--point-size", type=float, default=4.0, help="Initial point size.")
     parser.add_argument("--bg", type=float, nargs=3, default=[1.0, 1.0, 1.0], help="Background color RGB in [0,1]. e.g. --bg 0 0 0")
 
-    parser.add_argument("--show-normals", action="store_true", help="Show normals (if present or estimated).")
-    parser.add_argument("--estimate-normals", action="store_true", help="Estimate normals if not present.")
+    parser.add_argument("--show-normals", default=False, help="Show normals (if present or estimated).")
+    parser.add_argument("--estimate-normals", default=True, help="Estimate normals if not present.")
     parser.add_argument("--normal-radius", type=float, default=0.01, help="Normal estimation search radius (in meters).")
     parser.add_argument("--normal-max-nn", type=int, default=30, help="Normal estimation max nn.")
 

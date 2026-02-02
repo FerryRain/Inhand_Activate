@@ -11,21 +11,21 @@ import numpy as np
 import nksr
 from pycg import vis
 from examples.common import load_bunny_example, warning_on_low_memory
-import open3d_pycg as o3d
+import open3d as o3d
 from examples.common import load_spot_example, warning_on_low_memory
 if __name__ == '__main__':
     warning_on_low_memory(1024.0)
     device = torch.device("cuda:0")
     # 要OBJ.1 2 5    3 4重测
-    # bunny_geom = vis.from_file("/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001_down0.01/pcd/recon_0_000240.ply")
+    bunny_geom = vis.from_file("/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/online_tracking/cube_obj1/green_cube_00_001_down0.01/normal/recon_0_000244_xyz_normal.ply")
     # bunny_geom = o3d.io.read_point_cloud(
         # "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_001_down0.01/normal/recon_0_000244_xyz_normal.ply")
     # bunny_geom = o3d.io.read_point_cloud("/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_00_002/normal/recon_0_000170_xyz_normal.ply")  #obj1
     # bunny_geom = o3d.io.read_point_cloud("/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/green_cube_02_000/normal/recon_0_000118_xyz_normal.ply")  #obj2
     # bunny_geom = o3d.io.read_point_cloud(
     #     "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/purple_cube_01/normal/recon_0_000195_xyz_normal.ply")  # obj3
-    bunny_geom = o3d.io.read_point_cloud(
-        "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003/normal/recon_0_000200_xyz_normal.ply")  # obj4
+    # bunny_geom = o3d.io.read_point_cloud(
+    #     "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/cube_obj1/003/normal/recon_0_000200_xyz_normal.ply")  # obj4
     # bunny_geom = o3d.io.read_point_cloud(
     #     "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/yellow_cylinder_002/normal/recon_0_000140_xyz_normal.ply")  # obj5
     # bunny_geom = o3d.io.read_point_cloud(

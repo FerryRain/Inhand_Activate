@@ -517,9 +517,9 @@ def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument("--debug_dir", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking/cube_purple/001",
+                    default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/002",
                     help="debug_dir that contains keyframes/")
-    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_01/002_ICP", help="output directory")
+    ap.add_argument("--out_dir", type=str, default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/demo/cube/001", help="output directory")
 
     ap.add_argument("--K_path", type=str,
                     default="/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/results/cam_K_A.txt",

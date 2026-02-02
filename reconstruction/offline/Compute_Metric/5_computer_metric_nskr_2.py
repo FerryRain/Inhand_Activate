@@ -691,9 +691,9 @@ def build_gt_cache_entry(
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/Big_Cylinder/003_ICP",
+    ap.add_argument("--result_dir", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/ablation/offline_tracking/cube_purple/xyz",
                     help="dir containing pcd_online/, pcd/, mesh/, mesh_nksr/")
-    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube_obj_01/GT",
+    ap.add_argument("--gt_root", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/cube_purple/GT",
                     help="GT folder containing mesh/GT_mesh.stl and ply/GT_normal.ply")
     ap.add_argument("--fps", type=float, default=20, help="time_s = frame_id / fps")
 
@@ -705,14 +705,14 @@ def main():
     ap.add_argument("--align_source", choices=["pcd", "pcd_online"], default="pcd",
                     help="Which PCD folder to use for STRICT alignment (T_ref). Default: offline pcd/")
 
-    ap.add_argument("--thresholds_mm", type=str, default="2, 5, 10", help="fscore thresholds (mm)")
+    ap.add_argument("--thresholds_mm", type=str, default="0.5, 1, 5", help="fscore thresholds (mm)")
     ap.add_argument("--pick_tau_mm", type=float, default=5.0, help="ref selection tau (mm) using Precision@tau")
 
     ap.add_argument("--rec_scale", type=float, default=1.0)
     ap.add_argument("--gt_scale", type=float, default=1.0)
     ap.add_argument("--no_auto_unit", action="store_true")
     ap.add_argument("--no_auto_voxel", default=True)  # <-- FIXED (was mistakenly default=True)
-    ap.add_argument("--voxel", type=float, default=0.001, help="fallback voxel if auto_voxel disabled")
+    ap.add_argument("--voxel", type=float, default=0.003, help="fallback voxel if auto_voxel disabled")
 
     # eval_voxel: used ONLY for Precision@tau scoring when picking T_ref
     ap.add_argument("--eval_voxel", type=float, default=0.005, help="downsample voxel for Precision@tau scoring (0 disables)")
@@ -937,7 +937,7 @@ def main():
             row.update(flatten_pcd_report_optional(None, taus_m, prefix="online_pcd_vs_gt"))
             row.update(flatten_pcd_report_optional(None, taus_m, prefix="offline_pcd_vs_gt"))
             row.update(flatten_mesh_report(None, taus_m, prefix="mesh_vs_gt"))
-            row.update(flatten_mesh_report(None, taus_m, prefix="nksr_vs_gt"))
+            row.update(flatten_mesh_report(None, taus_m, prefix="nksr_vs_mesh"))
             rows.append(row)
             continue
 
@@ -1026,17 +1026,9 @@ def main():
             apply_scale(mesh_nksr, s_rec_frame)
             mesh_nksr.transform(T)
 
-            # rep_nksr_mesh = eval_mesh_mesh_pair(
-            #     mesh_a=mesh_nksr,
-            #     mesh_b=mesh_orig,
-            #     mesh_samples=args.mesh_metric_samples,
-            #     sample_method=args.mesh_sample_method,
-            #     taus_m=taus_m,
-            # )
-            rep_nksr_mesh = eval_mesh_mesh_against_fixed_ref(
-                rec_mesh=mesh_nksr,
-                scene_ref=scene_gt_use,
-                ref_samples_xyz=gt_samples_xyz_use,
+            rep_nksr_mesh = eval_mesh_mesh_pair(
+                mesh_a=mesh_nksr,
+                mesh_b=mesh_orig,
                 mesh_samples=args.mesh_metric_samples,
                 sample_method=args.mesh_sample_method,
                 taus_m=taus_m,
@@ -1044,7 +1036,7 @@ def main():
         else:
             missing_nksr += 1
 
-        row.update(flatten_mesh_report(rep_nksr_mesh, taus_m, prefix="nksr_vs_gt"))
+        row.update(flatten_mesh_report(rep_nksr_mesh, taus_m, prefix="nksr_vs_mesh"))
 
         rows.append(row)
 
@@ -1054,7 +1046,7 @@ def main():
             online_acc = row.get("online_pcd_vs_gt_accuracy_mean", np.nan)
             offline_acc = row.get("offline_pcd_vs_gt_accuracy_mean", np.nan)
             mesh_f = row.get(f"mesh_vs_gt_fscore@{tau0:.6f}", np.nan)
-            nksr_f = row.get(f"nksr_vs_gt_fscore@{tau0:.6f}", np.nan)
+            nksr_f = row.get(f"nksr_vs_mesh_fscore@{tau0:.6f}", np.nan)
             print(
                 f"[{i+1:04d}/{len(ids):04d}] id={fid:06d} t={time_s:.2f}s  "
                 f"OnlinePCD acc={online_acc:.6f}  OfflinePCD acc={offline_acc:.6f}  "

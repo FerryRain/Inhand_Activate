@@ -7,8 +7,8 @@
 """
 import open3d as o3d
 
-in_path  = "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/purple_cube_01/GT/ply/GT.ply"          # 改成你的输入
-out_path = "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/purple_cube_01/GT/ply/GT_down.ply"     # 输出
+in_path  = "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/green_Pepper/GT/ply/GT.ply"  # 改成你的输入
+out_path = "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data/green_Pepper/GT/ply/GT_down.ply"  # 输出
 ratio    = 0.01                  # 保留比例：0.1=保留10%
 
 pcd = o3d.io.read_point_cloud(in_path)
