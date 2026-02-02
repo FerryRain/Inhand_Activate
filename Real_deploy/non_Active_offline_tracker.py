@@ -101,12 +101,14 @@ def sleep_until(t_target: float, max_sleep: float = 0.005):
 # ----------------------------- Main -----------------------------
 @hydra.main(config_name='config', config_path='../LeapHand_rotation/isaacgymenvs/cfg')
 def main(config: DictConfig):
-    out_dir = "/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking/cube_obj_02/004"
+    out_dir = "/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/ablation/offline_tracking/cube_purple/x"
+    starts_axis = "z"
+
     stats = TimingStats()
 
     # >>> Config
-    ACTIVE_PERIOD_SEC = 6.0
-    MANIP_BUDGET_SEC = 50.0
+    ACTIVE_PERIOD_SEC = 10.0
+    MANIP_BUDGET_SEC = 30.0
 
     SAVE_FPS = 20.0
     SAVE_DT = 1.0 / SAVE_FPS
@@ -114,7 +116,6 @@ def main(config: DictConfig):
 
     VIZ_EVERY_N_ACTIVE = 1  # 如果你觉得 est.viz() 卡，把它改成 2/3/5 做降频
 
-    starts_axis = "z"
 
     # OpenCV：减少线程带来的抖动/抢占（通常会更稳）
     try:
@@ -124,12 +125,12 @@ def main(config: DictConfig):
         pass
 
     # tracker：初始化阶段需要 UI，进入主循环后尽量不要 GUI
-    tracker = OfflineDiskRecorderTracker(text_prompt="A green object", show_ui=True, root_dir=out_dir, k4a_color_res="720P",)
+    tracker = OfflineDiskRecorderTracker(text_prompt="A purple object", show_ui=True, root_dir=out_dir, k4a_color_res="720P",)
 
     recon = Reconstructor()
     est = GPISNBVv2()
 
-    controller = HardwarePlayer(config, com="/dev/ttyUSB1")
+    controller = HardwarePlayer(config, com="/dev/ttyUSB0")
     controller.restore_all_models()
     controller.start_deployment()
 
@@ -224,38 +225,38 @@ def main(config: DictConfig):
                     tracker.track()
                     break
 
-                if now >= next_active_t:
-                    ac_count += 1
-
-                    controller.get_axis()
-
-                    with timed(stats, "active/tracking"):
-                        tracker.track()
-
-                    with timed(stats, "stage/active"):
-                        with timed(stats, "active/reconstruct"):
-                            pcd = recon.reconstruct()
-
-                        with timed(stats, "active/nbv_estimate"):
-                            nbv = est.estimate(pcd, seed=0, verbose=True)
-
-                        # est.viz() 往往很卡：建议降频或关掉
-                        # if (ac_count % VIZ_EVERY_N_ACTIVE) == 0:
-                        #     with timed(stats, "active/nbv_viz"):
-                        est.viz()
-
-                        with timed(stats, "active/pick_axis"):
-                            axis_idx, rvec_W, aW, vW, T_WO, T_WC = pick_world_axis_and_rvec(
-                                tracker.last_T, tracker.init_pose, nbv["best_dir"]
-                            )
-
-                        print(f"[Active@{ac_count}] Turn to rotating along {axis_name[axis_idx]} from {rotating_now}")
-                        rotating_now = axis_name[axis_idx]
-
-                        with timed(stats, "active/hand_set_axis"):
-                            controller.get_axis(rotating_now)
-
-                    next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
+                # if now >= next_active_t:
+                #     ac_count += 1
+                #
+                #     controller.get_axis()
+                #
+                #     with timed(stats, "active/tracking"):
+                #         tracker.track()
+                #
+                #     with timed(stats, "stage/active"):
+                #         with timed(stats, "active/reconstruct"):
+                #             pcd = recon.reconstruct()
+                #
+                #         with timed(stats, "active/nbv_estimate"):
+                #             nbv = est.estimate(pcd, seed=0, verbose=True)
+                #
+                #         # est.viz() 往往很卡：建议降频或关掉
+                #         # if (ac_count % VIZ_EVERY_N_ACTIVE) == 0:
+                #         #     with timed(stats, "active/nbv_viz"):
+                #         est.viz()
+                #
+                #         with timed(stats, "active/pick_axis"):
+                #             axis_idx, rvec_W, aW, vW, T_WO, T_WC = pick_world_axis_and_rvec(
+                #                 tracker.last_T, tracker.init_pose, nbv["best_dir"]
+                #             )
+                #
+                #         print(f"[Active@{ac_count}] Turn to rotating along {axis_name[axis_idx]} from {rotating_now}")
+                #         rotating_now = axis_name[axis_idx]
+                #
+                #         with timed(stats, "active/hand_set_axis"):
+                #             controller.get_axis(rotating_now)
+                #
+                #     next_active_t = time.perf_counter() + ACTIVE_PERIOD_SEC
 
     except KeyboardInterrupt:
         print("\n[KeyboardInterrupt] Exiting...")

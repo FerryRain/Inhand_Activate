@@ -11,7 +11,7 @@ os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 import sys
 sys.path.append("/home/ferry/data/Code2/Research/Inhand_Activate")
 
-# 可选：降低多线程库的抖动/抢占（如果你发现 GPIS 反而变慢，就注释掉）
+
 # os.environ.setdefault("OMP_NUM_THREADS", "1")
 # os.environ.setdefault("MKL_NUM_THREADS", "1")
 # os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -28,7 +28,7 @@ from omegaconf import DictConfig
 import cv2
 
 from reconstruction.Reconstructor import Reconstructor
-from Tracking.tracking_offline_sam3 import OfflineDiskRecorderTracker
+from Tracking.tracking_offline_sam2 import OfflineDiskRecorderTracker
 from Active.NBV_gpis import GPISNBVv2
 from LeapHand_rotation.isaacgymenvs.hand_controller import HardwarePlayer
 from Active.motion_planner import pick_world_axis_and_rvec
@@ -101,11 +101,11 @@ def sleep_until(t_target: float, max_sleep: float = 0.005):
 # ----------------------------- Main -----------------------------
 @hydra.main(config_name='config', config_path='../LeapHand_rotation/isaacgymenvs/cfg')
 def main(config: DictConfig):
-    out_dir = "/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking/cube_obj_02/004"
+    out_dir = "/home/ferry/data/Code2/Research/Inhand_Activate/Real_deploy/results/offline_tracking_sam2/cube_obj_01/001"
     stats = TimingStats()
 
     # >>> Config
-    ACTIVE_PERIOD_SEC = 6.0
+    ACTIVE_PERIOD_SEC = 5.0
     MANIP_BUDGET_SEC = 50.0
 
     SAVE_FPS = 20.0
@@ -124,7 +124,15 @@ def main(config: DictConfig):
         pass
 
     # tracker：初始化阶段需要 UI，进入主循环后尽量不要 GUI
-    tracker = OfflineDiskRecorderTracker(text_prompt="A green object", show_ui=True, root_dir=out_dir, k4a_color_res="720P",)
+    tracker = OfflineDiskRecorderTracker(root_dir=out_dir,
+        sam2_checkpoint="sam_model/sam2.1_hiera_tiny.pt",
+        sam2_model_cfg="configs/sam2.1/sam2.1_hiera_t.yaml",
+        sam2_device="cuda",
+        sam2_use_amp=True,
+        show_ui=True,
+        jpg_quality=90,
+        box_pad_prev=14,
+        constrain_prev_by_prompt_box=True,)
 
     recon = Reconstructor()
     est = GPISNBVv2()
@@ -178,6 +186,7 @@ def main(config: DictConfig):
                 elif key == ord("g"):
                     # 画 gate 并进入主循环
                     tracker.draw_gate(idx=0)
+                    tracker.draw_prompt_box(idx=0)
                     init_done = True
 
                     # 进入主循环后，尽量关闭 tracker UI（若类里支持）
