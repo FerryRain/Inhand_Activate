@@ -4,6 +4,10 @@
 """
 @FileName：tracking_offline.py
 @Description：Record one frame per call (to disk), then offline tracking from disk with resume.
+             Segmentation: SAM2 bbox prompt (via your SamSegmenter wrapper).
+             Gate mask (polygon) and prompt bbox (rectangle) are separated:
+               - gate: AND constraint on output mask
+               - bbox: SAM2 prompt box (and optional constraint on prompt box region)
 @Author：Ferry
 @Time：2026/01/19
 @Copyright：©2024-2026 ShanghaiTech University-RIMLAB
@@ -13,15 +17,14 @@ import os
 import re
 import json
 import math
-import time
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, List, Tuple
 
 import cv2
 import numpy as np
 import zmq
 
 from Active.AzureKinectDK.Azure_camera import AzureKinectDK
-from ultralytics.models.sam import SAM3SemanticPredictor
+from Tracking.sam2_class import SamSegmenter
 
 
 # ------------------------ Small IO helpers ------------------------
@@ -29,11 +32,8 @@ from ultralytics.models.sam import SAM3SemanticPredictor
 def ensure_dir(p: str):
     os.makedirs(p, exist_ok=True)
 
+
 def safe_imwrite(path: str, img: np.ndarray, params: Optional[List[int]] = None):
-    """
-    Safe-ish write: write to tmp with SAME extension, then os.replace().
-    Fixes OpenCV error "could not find a writer for .tmp".
-    """
     root, ext = os.path.splitext(path)
     if ext == "":
         raise ValueError(f"safe_imwrite: path has no extension: {path}")
@@ -43,159 +43,131 @@ def safe_imwrite(path: str, img: np.ndarray, params: Optional[List[int]] = None)
         raise RuntimeError(f"cv2.imwrite failed: {tmp}")
     os.replace(tmp, path)
 
+
 def safe_imread_color(path: str) -> np.ndarray:
     img = cv2.imread(path, cv2.IMREAD_COLOR)
     if img is None:
         raise FileNotFoundError(f"Failed to read image: {path}")
     return img
 
+
 def safe_imread_depth_u16(path: str) -> np.ndarray:
     d = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if d is None:
         raise FileNotFoundError(f"Failed to read depth: {path}")
     if d.dtype != np.uint16:
-        # 有些情况下会读成 uint8 或 int32，直接转成 uint16
         d = d.astype(np.uint16, copy=False)
     return d
 
 
-# ------------------------ SAM3 (Ultralytics) ------------------------
+# ------------------------ Mask/Box helpers ------------------------
 
-class Sam3TextSegmenter:
+def sample_center_points_from_mask(mask01: np.ndarray, n: int = 5) -> Optional[np.ndarray]:
     """
-    输入一张 BGR 图 + text prompt，输出单个 mask01 (HxW, uint8 {0,1})
-    - 支持 gate_mask01：只在 gate 内保留结果（AND）
-    - 支持 prev_mask01：用 IoU 做“稳定选择”
+    从 mask 的“中心区域”取 n 个点（用 distance transform 取最大值点）。
+    返回 (n,2) 的 float32，坐标是 (x,y)。
     """
+    if mask01 is None:
+        return None
+    m = (mask01.astype(np.uint8) > 0).astype(np.uint8)
+    if int(m.sum()) == 0:
+        return None
 
-    def __init__(
-        self,
-        model_path: str,
-        imgsz: int = 640,
-        conf: float = 0.25,
-        device: str = "cuda",
-        half: bool = True,
-        verbose: bool = False,
-        save: bool = False,
-    ):
-        overrides = dict(
-            conf=float(conf),
-            task="segment",
-            mode="predict",
-            imgsz=int(imgsz),
-            model=str(model_path),
-            device=str(device),
-            half=bool(half),
-            verbose=bool(verbose),
-            save=bool(save),
-        )
-        self.predictor = SAM3SemanticPredictor(overrides=overrides)
-        self._tmp_img_path = "/tmp/sam3_tmp_frame.jpg"
+    # distanceTransform 需要 0/255
+    dist = cv2.distanceTransform((m * 255).astype(np.uint8), cv2.DIST_L2, 5)
+    if dist is None:
+        return None
 
-    @staticmethod
-    def _iou(a01: np.ndarray, b01: np.ndarray) -> float:
-        if a01 is None or b01 is None:
-            return 0.0
-        a = a01.astype(bool)
-        b = b01.astype(bool)
-        inter = np.logical_and(a, b).sum()
-        union = np.logical_or(a, b).sum()
-        return float(inter) / float(union) if union > 0 else 0.0
+    ys, xs = np.nonzero(m > 0)
+    if xs.size == 0:
+        return None
 
-    @staticmethod
-    def _extract_masks_from_results(results):
-        r = None
-        if results is None:
-            return None
+    vals = dist[ys, xs]
+    k = min(int(n), int(vals.size))
+    if k <= 0:
+        return None
 
-        if hasattr(results, "masks"):
-            r = results
-        elif isinstance(results, (list, tuple)) and len(results) > 0 and hasattr(results[0], "masks"):
-            r = results[0]
+    # 取 top-k 最大的距离点（最靠内）
+    idx = np.argpartition(vals, -k)[-k:]
+    sel_x = xs[idx].astype(np.float32)
+    sel_y = ys[idx].astype(np.float32)
 
-        if r is None or r.masks is None:
-            return None
+    pts = np.stack([sel_x, sel_y], axis=1)  # (k,2)
+    return pts
 
-        data = getattr(r.masks, "data", None)
-        if data is None:
-            return None
 
-        try:
-            masks = data.detach().float().cpu().numpy()
-        except Exception:
-            try:
-                masks = data.cpu().numpy()
-            except Exception:
-                return None
+def filter_points_in_box(points_xy: np.ndarray, box_xyxy: Optional[List[int]]) -> np.ndarray:
+    if points_xy is None or box_xyxy is None:
+        return points_xy
+    x0, y0, x1, y1 = [int(v) for v in box_xyxy]
+    x = points_xy[:, 0]
+    y = points_xy[:, 1]
+    keep = (x >= x0) & (x <= x1) & (y >= y0) & (y <= y1)
+    return points_xy[keep]
 
-        masks = masks > 0.5
-        return masks
 
-    def segment_from_text(
-        self,
-        bgr: np.ndarray,
-        text_prompt: str,
-        prev_mask01: Optional[np.ndarray] = None,
-        gate_mask01: Optional[np.ndarray] = None,
-    ) -> Optional[np.ndarray]:
-        if bgr is None:
-            return None
+def box_xyxy_from_mask(mask01: np.ndarray, pad: int = 8) -> Optional[List[int]]:
+    """mask01 -> [x0, y0, x1, y1]"""
+    if mask01 is None:
+        return None
+    ys, xs = np.where(mask01 > 0)
+    if xs.size == 0:
+        return None
+    H, W = mask01.shape[:2]
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0 = max(0, x0 - pad)
+    y0 = max(0, y0 - pad)
+    x1 = min(W - 1, x1 + pad)
+    y1 = min(H - 1, y1 + pad)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return [x0, y0, x1, y1]
 
-        # set_image: 优先 numpy；不支持则落回写 tmp 文件
-        try:
-            self.predictor.set_image(bgr)
-        except Exception:
-            cv2.imwrite(self._tmp_img_path, bgr)
-            self.predictor.set_image(self._tmp_img_path)
 
-        results = self.predictor(text=[text_prompt])
-        masks = self._extract_masks_from_results(results)
-        if masks is None or masks.shape[0] == 0:
-            return None
+def intersect_xyxy(a: Optional[List[int]], b: Optional[List[int]]) -> Optional[List[int]]:
+    """intersection of two xyxy boxes"""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    x0 = max(int(a[0]), int(b[0]))
+    y0 = max(int(a[1]), int(b[1]))
+    x1 = min(int(a[2]), int(b[2]))
+    y1 = min(int(a[3]), int(b[3]))
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return [x0, y0, x1, y1]
 
-        H, W = bgr.shape[:2]
-        gate = None
-        if gate_mask01 is not None:
-            gate = (gate_mask01.astype(np.uint8) > 0)
-            if gate.shape != (H, W):
-                gate = cv2.resize(gate.astype(np.uint8), (W, H), interpolation=cv2.INTER_NEAREST).astype(bool)
 
-        best = None
-        best_iou = -1.0
-        best_area = -1
+def roi_x0x1y0y1_from_mask(mask01: np.ndarray, pad: int = 5) -> Optional[List[int]]:
+    """For bundletrack header ROI: [x0, x1, y0, y1]"""
+    if mask01 is None:
+        return None
+    ys, xs = np.where(mask01 > 0)
+    if xs.size == 0:
+        return None
+    H, W = mask01.shape[:2]
+    x0, x1 = int(xs.min()), int(xs.max())
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0 = max(0, x0 - pad)
+    y0 = max(0, y0 - pad)
+    x1 = min(W - 1, x1 + pad)
+    y1 = min(H - 1, y1 + pad)
+    if x1 <= x0 or y1 <= y0:
+        return None
+    return [x0, x1, y0, y1]
 
-        for k in range(masks.shape[0]):
-            mk = masks[k]
-            if mk.shape != (H, W):
-                mk = cv2.resize(mk.astype(np.uint8), (W, H), interpolation=cv2.INTER_NEAREST).astype(bool)
 
-            if gate is not None:
-                mk_in = np.logical_and(mk, gate)
-                area_in = int(mk_in.sum())
-                if area_in <= 0:
-                    continue
-                mk_use = mk_in
-                area_use = area_in
-            else:
-                mk_use = mk
-                area_use = int(mk_use.sum())
-                if area_use <= 0:
-                    continue
-
-            if prev_mask01 is not None:
-                iou = self._iou(mk_use.astype(np.uint8), prev_mask01.astype(np.uint8))
-                if iou > best_iou:
-                    best_iou = iou
-                    best_area = area_use
-                    best = mk_use
-            else:
-                if area_use > best_area:
-                    best_area = area_use
-                    best = mk_use
-
-        if best is None:
-            return None
-        return best.astype(np.uint8)
+def mask_and_gate(mask01: Optional[np.ndarray], gate01: Optional[np.ndarray]) -> Optional[np.ndarray]:
+    if mask01 is None:
+        return None
+    if gate01 is None:
+        return mask01.astype(np.uint8)
+    if mask01.shape != gate01.shape:
+        H, W = gate01.shape[:2]
+        mask01 = cv2.resize(mask01.astype(np.uint8), (W, H), interpolation=cv2.INTER_NEAREST)
+    return (mask01.astype(np.uint8) & (gate01.astype(np.uint8) > 0).astype(np.uint8))
 
 
 # ------------------------ Disk-based Recorder + Offline Tracking ------------------------
@@ -204,7 +176,8 @@ class OfflineDiskRecorderTracker:
     """
     落盘版本（不吃内存）：
     - record_frame(): 每调用一次录制一帧 -> 写本地 color/depth
-    - draw_gate(): 在已录制帧上画 gate -> 保存 gate.png
+    - draw_gate(): 在已录制帧上画 gate polygon -> 保存 gate.png
+    - draw_prompt_box(): 在已录制帧上画 bbox -> 保存 prompt_box.json
     - track(): 从本地读取，第一次 idx=0 init；后续从 last_tracked_idx 开始（用 last_T 作为 init）继续
     """
 
@@ -216,13 +189,14 @@ class OfflineDiskRecorderTracker:
         k4a_depth_mode="NFOV_UNBINNED",
         k4a_fps=30,
         bundletrack_addr="tcp://127.0.0.1:5550",
-        # SAM3
-        sam3_model="/home/ferry/data/Code2/Research/Inhand_Activate/sam_model/sam3.pt",
-        sam3_device="cuda",
-        sam3_imgsz=640,
-        sam3_conf=0.25,
-        sam3_half=True,
-        text_prompt="An green object with colorful stickers attached",
+        # SAM2
+        sam2_checkpoint: str = "/path/to/sam2_checkpoint.pt",
+        sam2_model_cfg: str = "configs/sam2/sam2_hiera_l.yaml",
+        sam2_device: str = "cuda",
+        sam2_use_amp: bool = True,
+        # prompt policy
+        box_pad_prev: int = 14,          # prev_mask bbox pad
+        constrain_prev_by_prompt_box: bool = True,  # prev bbox 是否被你手画 prompt_box 限制
         show_ui=True,
         jpg_quality: int = 90,
     ):
@@ -230,12 +204,16 @@ class OfflineDiskRecorderTracker:
         self.show_ui = bool(show_ui)
         self.jpg_quality = int(jpg_quality)
 
+        self.box_pad_prev = int(box_pad_prev)
+        self.constrain_prev_by_prompt_box = bool(constrain_prev_by_prompt_box)
+
         # directories
         self.root_dir = os.path.abspath(root_dir)
         self.color_dir = os.path.join(self.root_dir, "color")
         self.depth_dir = os.path.join(self.root_dir, "depth")
         self.state_path = os.path.join(self.root_dir, "state.json")
         self.gate_path = os.path.join(self.root_dir, "gate.png")
+        self.prompt_box_path = os.path.join(self.root_dir, "prompt_box.json")
         ensure_dir(self.root_dir)
         ensure_dir(self.color_dir)
         ensure_dir(self.depth_dir)
@@ -256,34 +234,32 @@ class OfflineDiskRecorderTracker:
         self.sock = self.make_client(addr=self.bundletrack_addr, timeout_ms=10000)
         print(f"[ZMQ] connected: {self.bundletrack_addr}")
 
-        # SAM3
-        self.text_prompt = str(text_prompt)
-        self.segmenter = Sam3TextSegmenter(
-            model_path=sam3_model,
-            imgsz=int(sam3_imgsz),
-            conf=float(sam3_conf),
-            device=str(sam3_device),
-            half=bool(sam3_half),
-            verbose=False,
-            save=False,
+        # SAM2
+        self.segmenter = SamSegmenter(
+            checkpoint=str(sam2_checkpoint),
+            model_cfg=str(sam2_model_cfg),
+            device=str(sam2_device),
+            use_amp=bool(sam2_use_amp),
         )
-        print(f"[SAM3] model={sam3_model} device={sam3_device} prompt='{self.text_prompt}'")
+        print(f"[SAM2] checkpoint={sam2_checkpoint} cfg={sam2_model_cfg} device={sam2_device} amp={sam2_use_amp}")
 
         # state
         self.idx_next: int = 0
         self.init_done: bool = False
         self.last_tracked_idx: int = -1
         self.last_T: Optional[np.ndarray] = None
-        self.prev_mask01: Optional[np.ndarray] = None  # 不落盘（只在一次 track() 调用内部用）
+        self.prev_mask01: Optional[np.ndarray] = None  # 不落盘
         self.gate_mask01: Optional[np.ndarray] = None
+        self.prompt_box_xyxy: Optional[List[int]] = None  # [x0,y0,x1,y1] separate from gate
 
         # load disk state if exists
         self._load_state()
         self._load_gate_if_exists()
+        self._load_prompt_box_if_exists()
         self._sync_idx_next_from_disk()
 
         # UI
-        self.win = "OfflineDiskRecorderTracker (r:record | g:gate | t:track | q:quit)"
+        self.win = "OfflineDiskRecorderTracker (r:record | g:gate | b:bbox | t:track | q:quit)"
         if self.show_ui:
             cv2.namedWindow(self.win, cv2.WINDOW_NORMAL)
 
@@ -326,7 +302,6 @@ class OfflineDiskRecorderTracker:
             if m:
                 idxs.append(int(m.group(1)))
         idxs = sorted(set(idxs))
-        # depth 可能缺失，过滤掉不完整的
         idxs = [i for i in idxs if self._frame_exists(i)]
         return idxs
 
@@ -388,21 +363,40 @@ class OfflineDiskRecorderTracker:
         if self.gate_mask01 is None:
             return
         try:
-            # 保存为 0/255 便于肉眼查看
             vis = (self.gate_mask01.astype(np.uint8) * 255)
             safe_imwrite(self.gate_path, vis)
             print(f"[GATE] saved to {self.gate_path}")
         except Exception as e:
             print(f"[GATE] failed to save {self.gate_path}: {e}")
 
+    def _load_prompt_box_if_exists(self):
+        if not os.path.isfile(self.prompt_box_path):
+            return
+        try:
+            with open(self.prompt_box_path, "r") as f:
+                d = json.load(f)
+            box = d.get("prompt_box_xyxy", None)
+            if isinstance(box, list) and len(box) == 4:
+                self.prompt_box_xyxy = [int(x) for x in box]
+                print(f"[BBOX] loaded from {self.prompt_box_path}: {self.prompt_box_xyxy}")
+        except Exception as e:
+            print(f"[BBOX] failed to load {self.prompt_box_path}: {e}")
+
+    def _save_prompt_box(self):
+        if self.prompt_box_xyxy is None:
+            return
+        try:
+            tmp = self.prompt_box_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"prompt_box_xyxy": [int(x) for x in self.prompt_box_xyxy]}, f, indent=2)
+            os.replace(tmp, self.prompt_box_path)
+            print(f"[BBOX] saved to {self.prompt_box_path}: {self.prompt_box_xyxy}")
+        except Exception as e:
+            print(f"[BBOX] failed to save {self.prompt_box_path}: {e}")
+
     # ---------------- public APIs ----------------
 
     def record_frame(self) -> int:
-        """
-        录制一帧：采集 (color_bgr, depth_mm) 并写入本地：
-          color/xxxxxx.jpg
-          depth/xxxxxx.png  (uint16, mm)
-        """
         color, depth_mm = self.camera.get_k4a_frame(require_aligned_depth=True)
         if depth_mm.dtype != np.uint16:
             depth_mm = depth_mm.astype(np.uint16)
@@ -411,20 +405,14 @@ class OfflineDiskRecorderTracker:
         c_path = self._color_path(idx)
         d_path = self._depth_path(idx)
 
-        # color: jpg（体积更小），depth: png（保留16位）
         safe_imwrite(c_path, color, params=[int(cv2.IMWRITE_JPEG_QUALITY), self.jpg_quality])
         safe_imwrite(d_path, depth_mm)
 
         self.idx_next += 1
         self._save_state()
-        # print(f"[RECORD] idx={idx} -> {c_path}, {d_path}")
         return idx
 
     def draw_gate(self, idx: Optional[int] = None) -> Optional[np.ndarray]:
-        """
-        在某个已录制帧上绘制 gate polygon，并保存 gate.png。
-        默认 idx=0；若 0 不存在则用最新一帧。
-        """
         idxs = self._list_indices_on_disk()
         if len(idxs) == 0:
             print("[GATE] No recorded frames on disk. Call record_frame() first.")
@@ -448,12 +436,34 @@ class OfflineDiskRecorderTracker:
         self._save_gate()
         return self.gate_mask01
 
+    def draw_prompt_box(self, idx: Optional[int] = None) -> Optional[List[int]]:
+        """
+        画一个矩形 bbox 作为 SAM2 prompt（与 gate 无关）
+        保存到 prompt_box.json
+        """
+        idxs = self._list_indices_on_disk()
+        if len(idxs) == 0:
+            print("[BBOX] No recorded frames on disk. Call record_frame() first.")
+            return None
+
+        if idx is None:
+            idx = 0 if 0 in idxs else idxs[-1]
+        if idx not in idxs:
+            print(f"[BBOX] idx={idx} not found on disk.")
+            return None
+
+        color = safe_imread_color(self._color_path(idx))
+        print(f"[BBOX] Draw bbox on recorded frame idx={idx}")
+        box = self.select_prompt_box_rectangle(color, win_name="Select PROMPT BBOX (drag or 2 clicks)")
+        if box is None:
+            print("[BBOX] canceled.")
+            return None
+
+        self.prompt_box_xyxy = [int(x) for x in box]
+        self._save_prompt_box()
+        return self.prompt_box_xyxy
+
     def track(self) -> None:
-        """
-        从本地读取，做 SAM3 + bundletrack。
-        - 第一次：idx=0 init（mask+depth求center3D -> ob_in_cam）
-        - 后续：从 last_tracked_idx 开始（用 last_T 作为 init 再送一次），然后跑到最新帧
-        """
         idxs = self._list_indices_on_disk()
         if len(idxs) == 0:
             print("[TRACK] No recorded frames on disk.")
@@ -461,35 +471,34 @@ class OfflineDiskRecorderTracker:
 
         max_idx = idxs[-1]
 
-        # gate 必须在第一次 init 前设置
+        # 第一次 init 前：gate / bbox 可以分别设置（互不相同）
         if (not self.init_done) and (self.gate_mask01 is None):
-            # 默认让你在第一帧画 gate
             gate = self.draw_gate(idx=0 if 0 in idxs else None)
             if gate is None:
                 print("[TRACK] gate not set. Abort.")
+                return
+
+        if self.prompt_box_xyxy is None and self.prev_mask01 is None:
+            # 没有 prev_mask 的情况下，必须有 bbox prompt
+            box = self.draw_prompt_box(idx=0 if 0 in idxs else None)
+            if box is None:
+                print("[TRACK] prompt bbox not set. Abort.")
                 return
 
         # 起始 idx
         if not self.init_done:
             start_idx = 0
         else:
-            start_idx = self.last_tracked_idx  # 按你的要求：从上次结束的帧开始再init
+            start_idx = self.last_tracked_idx  # resume：从上次结束帧再 init 一次
 
-        if start_idx < 0:
-            start_idx = 0
+        start_idx = max(0, int(start_idx))
 
         if start_idx > max_idx:
             print(f"[TRACK] start_idx={start_idx} > max_idx={max_idx}, nothing to do.")
             return
 
-        # 只处理磁盘上存在的 idx（防止中间缺帧）
         idx_set = set(idxs)
         print(f"[TRACK] start_idx={start_idx}, max_idx={max_idx}, init_done={self.init_done}")
-
-        # 本次 track 调用内，prev_mask 从 None 开始（或沿用也行）
-        # 这里沿用上次调用的 prev_mask01 能更稳定，但跨次调用你没落盘，因此默认 None
-        # 如果你希望跨 track() 保持 prev_mask，请不要清空 self.prev_mask01
-        # self.prev_mask01 = None
 
         for idx in range(start_idx, max_idx + 1):
             if idx not in idx_set:
@@ -498,20 +507,55 @@ class OfflineDiskRecorderTracker:
             color = safe_imread_color(self._color_path(idx))
             depth_mm = safe_imread_depth_u16(self._depth_path(idx))
 
-            # ---------- SAM3 ----------
+            # ---------- SAM2 prompt ----------
+            # 你的要求：tracking 时，prompt 用上一帧 mask 的中心区域若干点
+            # 第 0 帧 / prev_mask 不存在：用你手画的 bbox 初始化
+
+            mask01 = None
+            box_for_sam2 = self.prompt_box_xyxy if self.constrain_prev_by_prompt_box else None
+
             try:
-                mask01 = self.segmenter.segment_from_text(
-                    color,
-                    self.text_prompt,
-                    prev_mask01=self.prev_mask01 if self.init_done else None,
-                    gate_mask01=self.gate_mask01,
-                )
+                if self.prev_mask01 is not None and int(self.prev_mask01.sum()) > 0:
+                    pts = sample_center_points_from_mask(self.prev_mask01, n=5)
+
+                    # 若你希望点也被 prompt_box 限制（与你原先 constrain 逻辑一致）
+                    if self.constrain_prev_by_prompt_box and self.prompt_box_xyxy is not None and pts is not None:
+                        pts = filter_points_in_box(pts, self.prompt_box_xyxy)
+                        if pts is not None and pts.shape[0] == 0:
+                            pts = None
+
+                    if pts is not None and pts.shape[0] > 0:
+                        labels = np.ones((pts.shape[0],), dtype=np.int32)  # 全正点
+                        mask01 = self.segmenter.segment_from_points(
+                            color,
+                            points_xy=pts,
+                            point_labels=labels,
+                            box_xyxy=box_for_sam2,  # 你可以设为 None 表示纯点 prompt
+                        )
+                    else:
+                        # 兜底：点采样失败则用 bbox
+                        if self.prompt_box_xyxy is not None:
+                            mask01 = self.segmenter.segment_from_box(color, box_xyxy=self.prompt_box_xyxy)
+                        else:
+                            mask01 = self.prev_mask01
+
+                else:
+                    # 第一次：用你画的 bbox 初始化
+                    if self.prompt_box_xyxy is None:
+                        raise RuntimeError("prompt_box_xyxy is None (need bbox for init)")
+                    mask01 = self.segmenter.segment_from_box(color, box_xyxy=self.prompt_box_xyxy)
+
+                # gate 仍然是独立 AND 约束
+                mask01 = mask_and_gate(mask01, self.gate_mask01)
+
             except Exception as e:
-                print(f"[WARN] SAM3 failed at idx={idx}: {e}")
-                mask01 = self.prev_mask01
+                print(f"[WARN] SAM2 failed at idx={idx}: {e}")
+                mask01 = mask_and_gate(self.prev_mask01, self.gate_mask01) if self.prev_mask01 is not None else None
+
+
 
             if mask01 is None or int(mask01.sum()) == 0:
-                mask01 = self.prev_mask01
+                mask01 = mask_and_gate(self.prev_mask01, self.gate_mask01) if self.prev_mask01 is not None else None
 
             if mask01 is None or int(mask01.sum()) == 0:
                 print(f"[WARN] Empty mask at idx={idx}. Skip frame.")
@@ -530,7 +574,6 @@ class OfflineDiskRecorderTracker:
                 self.init_pose = ob_in_cam
 
             elif self.init_done and idx == start_idx:
-                # 断点续追：从上次结束那帧开始重新 init 一次（用 last_T）
                 has_init = self.last_T is not None
                 ob_in_cam = self.last_T.copy() if self.last_T is not None else None
 
@@ -564,13 +607,33 @@ class OfflineDiskRecorderTracker:
             # UI（可选）
             if self.show_ui:
                 disp = color.copy()
+
+                # show gate (red overlay)
                 if self.gate_mask01 is not None:
-                    disp = self.overlay_mask_color(disp, self.gate_mask01, color=(0, 0, 255), alpha=0.25)
+                    disp = self.overlay_mask_color(disp, self.gate_mask01, color=(0, 0, 255), alpha=0.20)
+
+                # show bbox (yellow rectangle) -- independent from gate
+                if self.prompt_box_xyxy is not None:
+                    x0, y0, x1, y1 = [int(x) for x in self.prompt_box_xyxy]
+                    cv2.rectangle(disp, (x0, y0), (x1, y1), (0, 255, 255), 2)
+
+                # show current mask (green)
                 disp = self.overlay_mask_color(disp, mask01, color=(0, 255, 0), alpha=0.35)
+
                 self.draw_pose6d_on_image(disp, T, self.K, axis_len=self.axis_len, thickness=2, text_org=(5, 60))
+
+                # draw sampled prompt points (cyan dots)
+                if self.prev_mask01 is not None and int(self.prev_mask01.sum()) > 0:
+                    pts_dbg = sample_center_points_from_mask(self.prev_mask01, n=5)
+                    if self.constrain_prev_by_prompt_box and self.prompt_box_xyxy is not None and pts_dbg is not None:
+                        pts_dbg = filter_points_in_box(pts_dbg, self.prompt_box_xyxy)
+                    if pts_dbg is not None:
+                        for (x, y) in pts_dbg:
+                            cv2.circle(disp, (int(x), int(y)), 4, (255, 255, 0), -1, cv2.LINE_AA)
+
                 cv2.putText(
                     disp,
-                    f"TRACK idx={idx}/{max_idx} init={has_init} (disk)",
+                    f"TRACK idx={idx}/{max_idx} init={has_init} (gate AND, bbox prompt)",
                     (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.8,
@@ -678,18 +741,6 @@ class OfflineDiskRecorderTracker:
         T[:3, 3] = center3d_m.reshape(3)
         return T
 
-    def bbox_from_mask(self, mask01: np.ndarray, pad: int = 5):
-        ys, xs = np.where(mask01 > 0)
-        if xs.size == 0:
-            return None
-        x0, x1 = int(xs.min()), int(xs.max())
-        y0, y1 = int(ys.min()), int(ys.max())
-        x0 = max(0, x0 - pad)
-        y0 = max(0, y0 - pad)
-        x1 = min(mask01.shape[1] - 1, x1 + pad)
-        y1 = min(mask01.shape[0] - 1, y1 + pad)
-        return [x0, x1, y0, y1]
-
     def send_frame_with_sock(
         self,
         sock,
@@ -724,7 +775,7 @@ class OfflineDiskRecorderTracker:
         if roi is not None:
             header["roi"] = [float(x) for x in roi]
         elif mask01 is not None:
-            auto_roi = self.bbox_from_mask(mask01, pad=5)
+            auto_roi = roi_x0x1y0y1_from_mask(mask01, pad=5)
             if auto_roi is not None:
                 header["roi"] = [float(x) for x in auto_roi]
                 header["roi_pad"] = 5
@@ -744,6 +795,8 @@ class OfflineDiskRecorderTracker:
         resp = json.loads(sock.recv().decode("utf-8"))
         T = np.array(resp["ob_in_cam"], dtype=np.float32).reshape(4, 4)
         return T, resp
+
+    # ------------------------ UI selectors ------------------------
 
     def select_gate_mask_polygon(self, bgr, win_name="Select GATE mask (polygon)"):
         H, W = bgr.shape[:2]
@@ -798,33 +851,130 @@ class OfflineDiskRecorderTracker:
         cv2.destroyWindow(win_name)
         return mask
 
+    def select_prompt_box_rectangle(self, bgr, win_name="Select PROMPT BBOX (drag or 2 clicks)"):
+        H, W = bgr.shape[:2]
+        cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
+
+        state = {
+            "dragging": False,
+            "p0": None,
+            "p1": None,
+            "box": None,  # xyxy
+        }
+
+        def clamp_pt(x, y):
+            x = max(0, min(W - 1, int(x)))
+            y = max(0, min(H - 1, int(y)))
+            return x, y
+
+        def current_vis():
+            vis = bgr.copy()
+            cv2.putText(
+                vis,
+                "Drag LMB or click 2 points | ENTER/SPACE=OK | ESC=cancel | c=clear",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2,
+            )
+            if state["p0"] is not None:
+                cv2.circle(vis, state["p0"], 4, (0, 255, 255), -1, cv2.LINE_AA)
+            if state["p1"] is not None:
+                cv2.circle(vis, state["p1"], 4, (0, 255, 255), -1, cv2.LINE_AA)
+
+            if state["box"] is not None:
+                x0, y0, x1, y1 = state["box"]
+                cv2.rectangle(vis, (x0, y0), (x1, y1), (0, 255, 255), 2)
+            return vis
+
+        def update_box_from_p0p1():
+            if state["p0"] is None or state["p1"] is None:
+                state["box"] = None
+                return
+            x0, y0 = state["p0"]
+            x1, y1 = state["p1"]
+            xa, xb = (min(x0, x1), max(x0, x1))
+            ya, yb = (min(y0, y1), max(y0, y1))
+            if xb <= xa or yb <= ya:
+                state["box"] = None
+                return
+            state["box"] = [xa, ya, xb, yb]
+
+        def on_mouse(event, x, y, flags, param):
+            x, y = clamp_pt(x, y)
+            if event == cv2.EVENT_LBUTTONDOWN:
+                state["dragging"] = True
+                state["p0"] = (x, y)
+                state["p1"] = (x, y)
+                update_box_from_p0p1()
+            elif event == cv2.EVENT_MOUSEMOVE and state["dragging"]:
+                state["p1"] = (x, y)
+                update_box_from_p0p1()
+            elif event == cv2.EVENT_LBUTTONUP and state["dragging"]:
+                state["dragging"] = False
+                state["p1"] = (x, y)
+                update_box_from_p0p1()
+
+        cv2.setMouseCallback(win_name, on_mouse)
+
+        while True:
+            cv2.imshow(win_name, current_vis())
+            k = cv2.waitKey(20) & 0xFF
+            if k in (13, 10, 32):  # Enter/Space
+                if state["box"] is None:
+                    print("[BBOX] Need a valid rectangle.")
+                    continue
+                break
+            if k == 27:  # ESC
+                cv2.destroyWindow(win_name)
+                return None
+            if k == ord("c"):
+                state["dragging"] = False
+                state["p0"] = None
+                state["p1"] = None
+                state["box"] = None
+
+        cv2.destroyWindow(win_name)
+        return state["box"]
+
 
 # ------------------------ Simple interactive demo ------------------------
 
 def main():
-    # 你可以改成你想要的存储目录
     out_dir = "/home/ferry/data/Code2/Research/Inhand_Activate/Tracking/offline_cache"
 
     trk = OfflineDiskRecorderTracker(
         root_dir=out_dir,
-        text_prompt="An green object",
+        sam2_checkpoint="sam_model/sam2.1_hiera_tiny.pt",
+        sam2_model_cfg="configs/sam2.1/sam2.1_hiera_t.yaml",
+        sam2_device="cuda",
+        sam2_use_amp=True,
         show_ui=True,
         jpg_quality=90,
+        box_pad_prev=14,
+        constrain_prev_by_prompt_box=True,
     )
 
     print("\n[USAGE]")
     print("  r : record one frame -> write to disk")
-    print("  g : draw gate on frame0 (or latest if 0 not exist) -> save gate.png")
-    print("  t : track from disk (first time init on idx=0; later resume from last_tracked_idx)")
+    print("  g : draw gate polygon (output mask AND constraint) -> save gate.png")
+    print("  b : draw bbox rectangle (SAM2 prompt bbox, independent from gate) -> save prompt_box.json")
+    print("  t : track from disk (init idx=0; later resume from last_tracked_idx)")
     print("  q : quit\n")
 
     try:
         while True:
-            # 只做一个轻量 live 预览（不缓存）
             color, _ = trk.camera.get_k4a_frame(require_aligned_depth=True)
             disp = color.copy()
+
             if trk.gate_mask01 is not None:
-                disp = trk.overlay_mask_color(disp, trk.gate_mask01, color=(0, 0, 255), alpha=0.25)
+                disp = trk.overlay_mask_color(disp, trk.gate_mask01, color=(0, 0, 255), alpha=0.20)
+
+            if trk.prompt_box_xyxy is not None:
+                x0, y0, x1, y1 = [int(x) for x in trk.prompt_box_xyxy]
+                cv2.rectangle(disp, (x0, y0), (x1, y1), (0, 255, 255), 2)
+
             cv2.putText(
                 disp,
                 f"disk_dir={os.path.basename(trk.root_dir)}  idx_next={trk.idx_next}  init_done={trk.init_done}  last_tracked={trk.last_tracked_idx}",
@@ -843,6 +993,8 @@ def main():
                 trk.record_frame()
             elif key == ord("g"):
                 trk.draw_gate(idx=0)
+            elif key == ord("b"):
+                trk.draw_prompt_box(idx=0)
             elif key == ord("t"):
                 trk.track()
 
