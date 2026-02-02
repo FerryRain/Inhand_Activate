@@ -1,10 +1,19 @@
 """
-@FileName：NBV.py
+@FileName：NBV_gpis_Field.py
 @Description：
 @Author：Ferry
-@Time：2026 1/9/26 5:24 PM
+@Time：2026 1/24/26 1:42 PM
 @Copyright：©2024-2026 ShanghaiTech University-RIMLAB
 """
+"""
+@FileName：Uncertainty_compute_and_plot.py
+@Description：
+@Author：Ferry
+@Time：2026 1/24/26 2:02 PM
+@Copyright：©2024-2026 ShanghaiTech University-RIMLAB
+"""
+import argparse
+
 
 import math
 import os
@@ -146,8 +155,9 @@ class GPISConfig:
     noise: float = 1e-4
 
 
+# ------------------------------ NBVConfigV3 ------------------------------
 @dataclass
-class NBVConfigV2:
+class NBVConfigV3:
     n_dirs: int = 2000
     planar: bool = False
 
@@ -161,12 +171,20 @@ class NBVConfigV2:
     interp_min_cos: float = 0.6
     interp_tau: float = 0.08
 
-    # scoring near t0
+    # scoring near t0 (per-direction band query)
     band_halfwidth_scale: float = 0.06
     band_samples: int = 24
 
-    # novelty
+    # novelty base
     novelty_beta: float = 4.0
+
+    # receptive field on direction sphere
+    rf_k: int = 32
+    rf_min_cos: float = 0.96     # ~16 deg; set None to disable cutoff
+
+    # reducers
+    unc_rf_reduce: str = "max"   # "max" or "mean"
+    nov_rf_reduce: str = "mean"  # "mean" or "max"
 
     # uncertainty visualization
     delta_mu: float = 0.15
@@ -315,49 +333,105 @@ def fill_missing_depths(dirs: np.ndarray,
     return t0
 
 
-# ------------------------------ NBV scoring v2: uncertainty * novelty ------------------------------
-def score_direction_v2(model, likelihood,
-                       kdtree: o3d.geometry.KDTreeFlann,
-                       center_world: np.ndarray,
-                       radius: float,
-                       dir_world: np.ndarray,
-                       t0_scaled: float,
-                       t_max_scaled: float,
-                       band_halfwidth_scaled: float,
-                       n_band_samples: int,
-                       median_1nn_world: float,
-                       novelty_beta: float,
-                       device: str) -> float:
+# ------------------------------ RF neighbors on direction sphere ------------------------------
+def build_dir_neighbors(dirs: np.ndarray, k: int, min_cos: Optional[float]) -> np.ndarray:
     """
-    Score(u) = max_var_near_t0(u) * novelty(x0(u))
-      - max_var_near_t0: max posterior variance in [t0-dt, t0+dt]
-      - novelty: monotonic with distance from x0 to nearest observed point
+    Build receptive-field neighbor indices on the direction sphere.
+
+    dirs: (N,3) unit
+    return: nbrs (N,k) int32, invalid entries are -1
     """
-    if not np.isfinite(t0_scaled):
-        return 0.0
+    dirs = dirs.astype(np.float32)
+    N = dirs.shape[0]
+    if N == 0:
+        return np.zeros((0, 0), dtype=np.int32)
+    k = int(min(max(k, 1), N))
 
-    t1 = max(0.0, t0_scaled - band_halfwidth_scaled)
-    t2 = min(t_max_scaled, t0_scaled + band_halfwidth_scaled)
-    if t2 <= t1 + 1e-9:
-        return 0.0
+    # cosine similarity matrix (N,N)
+    cos = (dirs @ dirs.T).astype(np.float32)
 
-    u = dir_world / (np.linalg.norm(dir_world) + 1e-12)
+    # top-k indices per row (unordered), then sort by cosine descending
+    idx = np.argpartition(-cos, kth=k - 1, axis=1)[:, :k]  # (N,k)
+    row = np.arange(N)[:, None]
+    top_cos = cos[row, idx]
+    order = np.argsort(-top_cos, axis=1)
+    nbrs = idx[row, order].astype(np.int32)  # (N,k) sorted
 
-    ts = torch.linspace(t1, t2, n_band_samples, device=device)
-    u_t = torch.tensor(u, device=device, dtype=torch.float32)
-    Xq = (ts[:, None] * u_t[None, :]).contiguous()
+    # apply cutoff
+    if min_cos is not None:
+        mask = cos[row, nbrs] >= float(min_cos)
+        nbrs[~mask] = -1
 
-    _, var = gpis_predict(model, likelihood, Xq, batch=50000)
-    max_var = float(var.max().item())
+    return nbrs
 
-    x0_world = center_world + (t0_scaled * radius) * u
-    _, _, dist2 = kdtree.search_knn_vector_3d(x0_world, 1)
-    d_nn = math.sqrt(dist2[0]) if len(dist2) > 0 else 1e6
 
-    d0 = max(novelty_beta * median_1nn_world, 1e-6)
-    novelty = 1.0 - math.exp(- (d_nn / d0) ** 2)  # [0, 1)
+@torch.no_grad()
+def compute_band_max_var_all_dirs(
+    model, likelihood,
+    dirs: np.ndarray,
+    t0: np.ndarray,
+    t_max_scaled: float,
+    band_halfwidth_scaled: float,
+    n_band_samples: int,
+    device: str,
+) -> np.ndarray:
+    """
+    For each direction u_i, compute max posterior variance in band [t0-dt, t0+dt].
+    This is done in one batched GP query: total points = N * n_band_samples.
+    Return: max_var (N,) float32
+    """
+    dirs_t = torch.from_numpy(dirs.astype(np.float32)).to(device)  # (N,3)
+    t0_t = torch.from_numpy(t0.astype(np.float32)).to(device)      # (N,)
 
-    return max_var * novelty
+    N = dirs_t.shape[0]
+    dt = float(band_halfwidth_scaled)
+
+    S = int(max(2, n_band_samples))
+    offs = torch.linspace(-dt, dt, S, device=device)               # (S,)
+    ts = t0_t[:, None] + offs[None, :]                             # (N,S)
+    ts = torch.clamp(ts, 0.0, float(t_max_scaled))
+
+    # invalid t0 -> set all samples to 0 (will be masked later)
+    valid = torch.isfinite(t0_t)
+    ts[~valid, :] = 0.0
+
+    Xq = (ts[..., None] * dirs_t[:, None, :]).reshape(-1, 3).contiguous()  # (N*S,3)
+    _, var = gpis_predict(model, likelihood, Xq, batch=200000)
+    var = var.view(N, -1)  # (N,S)
+
+    max_var = torch.max(var, dim=1).values
+    max_var[~valid] = 0.0
+    return max_var.detach().cpu().numpy().astype(np.float32)
+
+
+def compute_anchor_novelty_all_dirs(
+    kdtree: o3d.geometry.KDTreeFlann,
+    center_world: np.ndarray,
+    radius: float,
+    dirs: np.ndarray,
+    t0: np.ndarray,
+    median_1nn_world: float,
+    novelty_beta: float,
+) -> np.ndarray:
+    """
+    novelty_i = 1 - exp(-(d_nn(x0_i)/d0)^2), where x0_i = center + (t0_i*radius)*u_i.
+    Return: novelty (N,) float32, invalid t0 -> 0.
+    """
+    N = dirs.shape[0]
+    novelty = np.zeros((N,), dtype=np.float32)
+
+    d0 = max(float(novelty_beta) * float(median_1nn_world), 1e-6)
+
+    for i in range(N):
+        if not np.isfinite(t0[i]):
+            novelty[i] = 0.0
+            continue
+        u = dirs[i]
+        x0_world = center_world + (float(t0[i]) * float(radius)) * u
+        _, _, dist2 = kdtree.search_knn_vector_3d(x0_world, 1)
+        d_nn = math.sqrt(dist2[0]) if len(dist2) > 0 else 1e6
+        novelty[i] = float(1.0 - math.exp(- (d_nn / d0) ** 2))
+    return novelty
 
 
 # ------------------------------ Uncertainty viz near surface band ------------------------------
@@ -432,21 +506,16 @@ def set_camera_look_from(vis: o3d.visualization.Visualizer, cam_pos: np.ndarray,
 
 
 # ============================================================
-# Class wrapper (script-like visualization, but object uses RAW point cloud)
+# Class wrapper
 # ============================================================
-class GPISNBVv2:
+class GPISNBVv3:
     """
-    GPIS + NBV-v2 wrapper.
+    GPIS + NBV-v3 (RF uncertainty * RF novelty) wrapper.
 
-    Visualization is script-like (new_gpis_test_2.py) except:
-      - The *inside object* point cloud is the ORIGINAL raw point cloud (after remove_non_finite),
-        i.e., NOT the voxel-downsampled cloud used for training/scoring.
-
-    Everything else stays aligned with the script:
+    Visualization:
       geoms = [pcd_vis(raw object), arrow(blue), cam_sphere(red), pcd_dirs(score sphere)] + optional pcd_unc
       window: 1280x800
       camera: set_camera_look_from(cam_pos, center)
-      prints: same text
     """
 
     def __init__(
@@ -465,8 +534,14 @@ class GPISNBVv2:
             band_halfwidth: float = 0.06,
             delta_mu: float = 0.15,
 
+            # RF params
+            rf_k: int = 32,
+            rf_min_cos: float = 0.96,
+            unc_rf_reduce: str = "max",
+            nov_rf_reduce: str = "mean",
+
             gpis_lr: float = 0.15,
-            gpis_add_outer_samples: bool = True,
+            gpis_add_outer_samples: bool = False,
             gpis_outer_offset_scale: float = 1.0,
             gpis_noise: float = 1e-4,
 
@@ -492,6 +567,11 @@ class GPISNBVv2:
         self.novelty_beta = float(novelty_beta)
         self.band_halfwidth = float(band_halfwidth)
         self.delta_mu = float(delta_mu)
+
+        self.rf_k = int(rf_k)
+        self.rf_min_cos = float(rf_min_cos)
+        self.unc_rf_reduce = str(unc_rf_reduce)
+        self.nov_rf_reduce = str(nov_rf_reduce)
 
         self.gpis_lr = float(gpis_lr)
         self.gpis_add_outer_samples = bool(gpis_add_outer_samples)
@@ -519,7 +599,7 @@ class GPISNBVv2:
         # keep ORIGINAL raw point cloud for visualization
         self.pcd_raw: Optional[o3d.geometry.PointCloud] = None
 
-        # viz objects (script-like)
+        # viz objects
         self.pcd: Optional[o3d.geometry.PointCloud] = None          # pcd_vis (raw object cloud)
         self.pcd_dirs: Optional[o3d.geometry.PointCloud] = None     # direction-score sphere points
         self.pcd_unc: Optional[o3d.geometry.PointCloud] = None      # variance near |mu|<delta_mu
@@ -535,6 +615,12 @@ class GPISNBVv2:
         self.best_score: Optional[float] = None
         self.best_t0_scaled: Optional[float] = None
         self._last_nbv: Optional[Dict[str, Any]] = None
+
+        # Optional debug buffers
+        self._unc_rf: Optional[np.ndarray] = None
+        self._nov_rf: Optional[np.ndarray] = None
+        self._unc_base: Optional[np.ndarray] = None
+        self._nov_base: Optional[np.ndarray] = None
 
     def estimate(self, pcd: Union[str, o3d.geometry.PointCloud], seed: int = 0, verbose: bool = True) -> Dict[str, Any]:
         set_seed(seed)
@@ -591,7 +677,7 @@ class GPISNBVv2:
             outer_offset_scale=self.gpis_outer_offset_scale,
             noise=self.gpis_noise,
         )
-        nbv = NBVConfigV2(
+        nbv = NBVConfigV3(
             n_dirs=self.n_dirs,
             planar=self.planar,
             t_max_scale=self.t_max_scale,
@@ -603,6 +689,10 @@ class GPISNBVv2:
             band_halfwidth_scale=self.band_halfwidth,
             band_samples=self.band_samples,
             novelty_beta=self.novelty_beta,
+            rf_k=self.rf_k,
+            rf_min_cos=self.rf_min_cos,
+            unc_rf_reduce=self.unc_rf_reduce,
+            nov_rf_reduce=self.nov_rf_reduce,
             delta_mu=self.delta_mu,
             grid_res=self.grid_res,
         )
@@ -657,7 +747,7 @@ class GPISNBVv2:
 
         hit_ratio = float(np.isfinite(t_hit).mean())
         if verbose:
-            print(f"[NBV-v2] hit_ratio={hit_ratio:.3f} (fraction of directions that hit point cloud)")
+            print(f"[NBV-v3] hit_ratio={hit_ratio:.3f} (fraction of directions that hit point cloud)")
 
         # 2) infer missing depths for miss directions
         t0 = fill_missing_depths(
@@ -668,39 +758,87 @@ class GPISNBVv2:
             tau=nbv.interp_tau
         )
 
-        # 3) score directions: uncertainty * novelty (toward unobserved)
-        scores = np.zeros((dirs.shape[0],), dtype=np.float32)
-        for i in range(dirs.shape[0]):
-            scores[i] = score_direction_v2(
-                model, likelihood,
-                kdtree=kdtree,
-                center_world=center,
-                radius=radius,
-                dir_world=dirs[i],
-                t0_scaled=float(t0[i]),
-                t_max_scaled=nbv.t_max_scale,
-                band_halfwidth_scaled=nbv.band_halfwidth_scale,
-                n_band_samples=nbv.band_samples,
-                median_1nn_world=median_1nn,
-                novelty_beta=nbv.novelty_beta,
-                device=self.device
-            )
+        # 3) score directions with receptive field:
+        #    Score(u_i) = UncRF(u_i) * NovRF(u_i)
+        #    where UncRF aggregates per-dir band max var over angular neighbors,
+        #          NovRF aggregates per-dir anchor novelty over angular neighbors.
+
+        # 3.1 per-direction base uncertainty: max var in band around t0
+        max_var = compute_band_max_var_all_dirs(
+            model, likelihood,
+            dirs=dirs,
+            t0=t0,
+            t_max_scaled=nbv.t_max_scale,
+            band_halfwidth_scaled=nbv.band_halfwidth_scale,
+            n_band_samples=nbv.band_samples,
+            device=self.device,
+        )  # (N,)
+
+        # 3.2 per-direction base novelty at anchor x0
+        novelty_base = compute_anchor_novelty_all_dirs(
+            kdtree=kdtree,
+            center_world=center,
+            radius=radius,
+            dirs=dirs,
+            t0=t0,
+            median_1nn_world=median_1nn,
+            novelty_beta=nbv.novelty_beta,
+        )  # (N,)
+
+        # 3.3 build angular RF neighbors
+        nbrs = build_dir_neighbors(dirs, k=nbv.rf_k, min_cos=nbv.rf_min_cos)  # (N,k), -1 invalid
+        nbrs_clip = np.clip(nbrs, 0, dirs.shape[0] - 1)
+
+        # gather (N,k)
+        unc_g = max_var[nbrs_clip]
+        nov_g = novelty_base[nbrs_clip]
+
+        valid = (nbrs >= 0)
+        # invalidate neighbors whose t0 is nan (no anchor)
+        valid = valid & np.isfinite(t0[nbrs_clip])
+
+        # mask invalid
+        unc_g = np.where(valid, unc_g, 0.0).astype(np.float32)
+        nov_g = np.where(valid, nov_g, 0.0).astype(np.float32)
+
+        # reduce
+        unc_reduce = nbv.unc_rf_reduce.lower().strip()
+        nov_reduce = nbv.nov_rf_reduce.lower().strip()
+
+        if unc_reduce == "mean":
+            cnt = np.maximum(valid.sum(axis=1).astype(np.float32), 1.0)
+            unc_rf = unc_g.sum(axis=1) / cnt
+        else:  # default "max"
+            unc_rf = unc_g.max(axis=1)
+
+        if nov_reduce == "max":
+            nov_rf = nov_g.max(axis=1)
+        else:  # default "mean"
+            cnt = np.maximum(valid.sum(axis=1).astype(np.float32), 1.0)
+            nov_rf = nov_g.sum(axis=1) / cnt
+
+        scores = (unc_rf * nov_rf).astype(np.float32)
+
+        if verbose:
+            print(f"[NBV-v3+RF] rf_k={nbv.rf_k}, rf_min_cos={nbv.rf_min_cos}")
+            print(f"[NBV-v3+RF] unc_rf_reduce={nbv.unc_rf_reduce}, nov_rf_reduce={nbv.nov_rf_reduce}")
 
         best_idx = int(np.argmax(scores))
         best_dir = dirs[best_idx]
         best_score = float(scores[best_idx])
 
         if verbose:
-            print(f"[NBV-v2] best_idx={best_idx}")
-            print(f"[NBV-v2] best_score={best_score:.6e}")
-            print(f"[NBV-v2] best_dir={best_dir.tolist()}")
-            print(f"[NBV-v2] best_t0_scaled={float(t0[best_idx])}")
+            print(f"[NBV-v3] best_idx={best_idx}")
+            print(f"[NBV-v3] best_score={best_score:.6e}")
+            print(f"[NBV-v3] best_dir={best_dir.tolist()}")
+            print(f"[NBV-v3] best_t0_scaled={float(t0[best_idx])}")
+            print(f"[NBV-v3] best_unc_rf={float(unc_rf[best_idx]):.6e}, best_nov_rf={float(nov_rf[best_idx]):.6e}")
+            print(f"[NBV-v3] best_unc_base={float(max_var[best_idx]):.6e}, best_nov_base={float(novelty_base[best_idx]):.6e}")
 
         # =========================================================
-        # Visualization objects (script-like), but pcd_vis uses RAW cloud
+        # Visualization objects
         # =========================================================
         pcd_vis = o3d.geometry.PointCloud(self.pcd_raw)  # raw object cloud
-        # If raw has no colors, follow script and paint gray; if it has colors, keep them.
         if not pcd_vis.has_colors():
             pcd_vis.paint_uniform_color([0.65, 0.65, 0.65])
 
@@ -748,6 +886,11 @@ class GPISNBVv2:
         self.best_score = best_score
         self.best_t0_scaled = float(t0[best_idx])
 
+        self._unc_rf = unc_rf
+        self._nov_rf = nov_rf
+        self._unc_base = max_var
+        self._nov_base = novelty_base
+
         nbv_out = {
             "best_idx": best_idx,
             "best_score": best_score,
@@ -758,17 +901,24 @@ class GPISNBVv2:
             "cam_pos": cam_pos.astype(np.float32).tolist(),
             "hit_ratio": hit_ratio,
             "device": self.device,
+
+            # RF decomposition (useful for paper plots / debug)
+            "best_unc_rf": float(unc_rf[best_idx]),
+            "best_nov_rf": float(nov_rf[best_idx]),
+            "best_unc_base": float(max_var[best_idx]),
+            "best_nov_base": float(novelty_base[best_idx]),
+            "rf_k": int(nbv.rf_k),
+            "rf_min_cos": float(nbv.rf_min_cos),
+            "unc_rf_reduce": str(nbv.unc_rf_reduce),
+            "nov_rf_reduce": str(nbv.nov_rf_reduce),
         }
         self._last_nbv = nbv_out
         return nbv_out
 
     def viz(self):
         """
-        Script-like visualization:
+        Visualization:
           geoms = [raw object cloud, arrow, cam_sphere, score sphere points] + optional pcd_unc
-          window: 1280x800
-          camera: set_camera_look_from(cam_pos, center)
-          prints: same text
         """
         if self.pcd is None or self.arrow is None or self.cam_sphere is None or self.pcd_dirs is None:
             raise RuntimeError("No result to visualize. Call estimate() first.")
@@ -781,7 +931,7 @@ class GPISNBVv2:
 
         vis = o3d.visualization.Visualizer()
         vis.create_window(
-            window_name="GPIS Uncertainty + NBV (v2: uncertainty * novelty)",
+            window_name="GPIS Uncertainty + NBV (v3: RF(uncertainty) * RF(novelty))",
             width=1280,
             height=800
         )
@@ -803,9 +953,7 @@ class GPISNBVv2:
             raise RuntimeError("No NBV available. Call estimate() first.")
         return self._last_nbv
 
-
-
-
+    # -------------------------- GUI viz (your original) --------------------------
     def _get_camera_extrinsic(self, cam_pos, target_pos):
         """
         计算从 cam_pos 看向 target_pos 的相机外参矩阵 (World-to-Camera)
@@ -857,21 +1005,17 @@ class GPISNBVv2:
         win.add_child(scene_widget)
 
         # --- 2. 创建材质 ---
-
-        # 物体材质: 建议先用 defaultUnlit（更“实”）
         mat_obj = rendering.MaterialRecord()
         mat_obj.shader = "defaultUnlit"
         mat_obj.base_color = [0.8, 0.8, 0.8, 1.0]
-        mat_obj.point_size = 5.0  # 试 4~8，稀疏就大一点
+        mat_obj.point_size = 5.0
 
-        # 评分点云材质: 半透明，不受光照影响 (让颜色更鲜艳)
         mat_scores = rendering.MaterialRecord()
         mat_scores.shader = "defaultUnlit"
-        mat_scores.base_color = [1.0, 1.0, 1.0, 0.3]  # 最后一位是 Alpha
-        mat_scores.has_alpha = True  # 必须开启此项以实现透明
-        mat_scores.point_size = 5.0  # 增加点的大小，形成云团感
+        mat_scores.base_color = [1.0, 1.0, 1.0, 0.3]
+        mat_scores.has_alpha = True
+        mat_scores.point_size = 5.0
 
-        # 不确定性体积材质 (可选)
         mat_unc = rendering.MaterialRecord()
         mat_unc.shader = "defaultUnlit"
         mat_unc.base_color = [1.0, 1.0, 1.0, 0.4]
@@ -880,8 +1024,6 @@ class GPISNBVv2:
 
         # --- 3. 创建相机视锥体 (Frustum) ---
         extrinsic = self._get_camera_extrinsic(self.cam_pos, self.center)
-        # 使用内参和外参创建一个视锥体线框
-        # 这里的 intrinsic 可以根据你的实际相机调整
         intrinsic = o3d.camera.PinholeCameraIntrinsic(
             1280, 800, 1000, 1000, 640, 400
         )
@@ -889,58 +1031,44 @@ class GPISNBVv2:
             view_width_px=1280, view_height_px=800,
             intrinsic=intrinsic.intrinsic_matrix,
             extrinsic=extrinsic,
-            scale=0.02  # 控制相机模型的大小
+            scale=0.02
         )
-        frustum.paint_uniform_color([0.0, 1.0, 0.2])  # 亮绿色
+        frustum.paint_uniform_color([0.0, 1.0, 0.2])  # green
 
-        # --- 4. 将几何体添加到场景 ---
-
-        # 添加物体
+        # --- 4. 添加到场景 ---
         scene_widget.scene.add_geometry("object_pcd", self.pcd, mat_obj)
 
-        # 添加半透明评分球
         if self.pcd_dirs is not None:
             scene_widget.scene.add_geometry("direction_scores", self.pcd_dirs, mat_scores)
 
-        # 添加高不确定性区域
         if self.pcd_unc is not None:
             scene_widget.scene.add_geometry("uncertainty_vol", self.pcd_unc, mat_unc)
 
-        # 添加相机视锥体
         mat_line = rendering.MaterialRecord()
         mat_line.shader = "unlitLine"
         mat_line.line_width = 2.0
         scene_widget.scene.add_geometry("camera_frustum", frustum, mat_line)
 
         # --- 5. 设置观察视角 ---
-
-        # --- 5. 设置观察视角 ---
         bounds = self.pcd.get_axis_aligned_bounding_box()
         scene_widget.setup_camera(60, bounds, self.center)
 
-        # 手动设置初始缩放：scale < 1 更近，scale > 1 更远
-        scale = 2  # 例如：0.65 更近一点；1.2 更远一点
-
+        scale = 2
         extent = bounds.get_extent()
-        radius = 0.5 * float(np.linalg.norm(extent))  # 一个“场景半径”
+        radius = 0.5 * float(np.linalg.norm(extent))
         cam = scene_widget.scene.camera
 
-        # 以 -Z 方向作为初始观察方向（你也可以换成别的方向）
         front = np.array([0.0, 0.0, -1.0])
         eye = np.asarray(self.center) - front * (radius / np.tan(np.deg2rad(60.0) * 0.5)) * scale
-        up = np.array([0.0, -1.0, 0.0])  # 你想要正向朝上可调
+        up = np.array([0.0, -1.0, 0.0])
 
         cam.look_at(self.center, eye, up)
+        scene_widget.scene.set_background([0.1, 0.1, 0.1, 1.0])
 
-        # 设置渲染器背景色（深色背景更高级）
-        scene_widget.scene.set_background([1.0, 1.0, 1.0, 0])
-
-        # 辅助文字说明
         print("[Visualizer] Green: NBV Camera Frustum")
         print("[Visualizer] Transparent Sphere: Score distribution (Red=High)")
         print("[Visualizer] Grey: Input Point Cloud")
 
-        # 运行
         app.run()
 
     def _get_lookat_matrix(self, cam_pos, target_pos):
@@ -951,7 +1079,6 @@ class GPISNBVv2:
         z = target_pos - cam_pos
         z /= np.linalg.norm(z)
 
-        # 粗略假设 Up 为 Z
         up = np.array([0, 0, 1])
         if abs(np.dot(up, z)) > 0.99:
             up = np.array([0, 1, 0])
@@ -966,27 +1093,36 @@ class GPISNBVv2:
         rot[:3, 2] = z
         rot[:3, 3] = cam_pos
 
-        # Open3D 的 extrinsic 是 World-to-Camera
         return np.linalg.inv(rot)
 
 
 # ------------------------------ minimal demo ------------------------------
 if __name__ == "__main__":
-    import argparse
-
     ap = argparse.ArgumentParser()
-    ap.add_argument("--in_path", type=str,
-                    default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_02/002_ICP/pcd_online/recon_0_000300.ply")
+    ap.add_argument(
+        "--in_path",
+        type=str,
+        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_02/002_ICP/pcd_online/recon_0_000300.ply"
+    )
     ap.add_argument("--no_viz", action="store_true")
     ap.add_argument("--seed", type=int, default=0)
+
+    # RF params (optional)
+    ap.add_argument("--rf_k", type=int, default=32)
+    ap.add_argument("--rf_min_cos", type=float, default=0.96)
+    ap.add_argument("--unc_rf_reduce", type=str, default="max", choices=["max", "mean"])
+    ap.add_argument("--nov_rf_reduce", type=str, default="mean", choices=["mean", "max"])
+
     args = ap.parse_args()
 
-    est = GPISNBVv2()
+    est = GPISNBVv3(
+        rf_k=args.rf_k,
+        rf_min_cos=args.rf_min_cos,
+        unc_rf_reduce=args.unc_rf_reduce,
+        nov_rf_reduce=args.nov_rf_reduce,
+    )
     nbv = est.estimate(args.in_path, seed=args.seed, verbose=True)
 
-    print(f"\nNBV:{nbv['best_dir']}")
-    # for k, v in nbv.items():
-    #     print(f"  {k}: {v}")
-
+    print(f"\nNBV best_dir: {nbv['best_dir']}")
     if not args.no_viz:
-        est.viz_2()
+        est.viz()
