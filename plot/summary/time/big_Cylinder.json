@@ -1,0 +1,22 @@
+{
+  "sums_sec": {
+    "hand/tracking": 3.050983650609851e-06,
+    "stage/Manip": 60.010798556759255,
+    "active/tracking": 250.50004574799095,
+    "active/reconstruct": 15.472803369979374,
+    "active/nbv_estimate": 13.415225642966107,
+    "active/pick_axis": 0.003221742023015395,
+    "active/hand_set_axis": 3.417793777771294e-05,
+    "stage/active": 47.327469231997384
+  },
+  "counts": {
+    "hand/tracking": 1,
+    "stage/Manip": 1204,
+    "active/tracking": 5,
+    "active/reconstruct": 5,
+    "active/nbv_estimate": 5,
+    "active/pick_axis": 5,
+    "active/hand_set_axis": 5,
+    "stage/active": 5
+  }
+}
