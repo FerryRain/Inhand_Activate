@@ -1,6 +1,13 @@
 # Inhand_Activate
 ## 6D Tracking (BundleTrack)
 
+```bash
+~/data/Code2/HW/CG2/PaperSharing/face_2/cmake-build-debug/face \
+/home/ferry/data/Code2/Research/Inhand_Activate/demo/results/cube_obj_01/002/pcd/recon_0_000587_xyz_ascii.ply \
+--o  /home/ferry/data/Code2/Research/Inhand_Activate/demo/results/cube_obj_01/002/pcd/recon_normal.ply \
+--i --a 0.01 --h
+```
+
 This project uses **BundleTrack** for 6D object tracking. We support two modes:
 
 * **Offline (folder/dataset testing)**: run tracking on a local dataset folder

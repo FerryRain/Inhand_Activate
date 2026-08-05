@@ -36,11 +36,11 @@ class LeapNode:
         # For example: /dev/serial/by-id/usb-FTDI_USB__-__Serial_Converter_FT7W91VW-if00-port0
         self.motors = motors = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         try:
-            self.dxl_client = DynamixelClient(motors, '/dev/ttyUSB1', 4000000)
+            self.dxl_client = DynamixelClient(motors, '/dev/ttyUSB0', 4000000)
             self.dxl_client.connect()
         except Exception:
             try:
-                self.dxl_client = DynamixelClient(motors, '/dev/ttyUSB0', 4000000)
+                self.dxl_client = DynamixelClient(motors, '/dev/ttyUSB1', 4000000)
                 self.dxl_client.connect()
             except Exception:
                 self.dxl_client = DynamixelClient(motors, 'COM13', 4000000)

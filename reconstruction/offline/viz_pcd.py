@@ -46,7 +46,7 @@ def main():
     parser = argparse.ArgumentParser(description="Simple point cloud viewer (Open3D).")
     # parser.add_argument("-i", "--input", default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/result/offline_tracking/cube_obj_01/003_ICP/pcd/recon_0_000600.ply", help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
     parser.add_argument("-i", "--input",
-                        default="/home/ferry/data/Code2/Research/Inhand_Activate/demo/results/process_pcd/Cross.ply",
+                        default="/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/Compute_Metric/trellis_mesh_eval_all/tetraprism_vs_cross/pred_aligned.ply",
                         help="Path to point cloud (ply/pcd/xyz/xyzn/xyzrgb) or mesh (obj/stl/off).")
 
     parser.add_argument("--voxel", type=float, default=0.0, help="Voxel downsample size (e.g. 0.002). 0 = disable.")

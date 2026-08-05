@@ -1,0 +1,59 @@
+LOG: 1
+bundle:
+  image_downscale: 4
+  max_BA_frames: 15
+  min_fm_edges_newframe: 5
+  num_iter_inner: 5
+  num_iter_outter: 7
+  robust_delta: 0.005
+  subset_selection_method: greedy_rot
+  window_size: 2
+data_dir: /home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/YCBInEOAT/cube_purple/001
+debug_dir: ./results/001/
+depth_processing:
+  bilateral_filter:
+    radius: 2
+    sigma_D: 2
+    sigma_R: 100000
+  erode:
+    diff: 0.001
+    radius: 1
+    ratio: 0.8
+  outlier_removal:
+    num: 30
+    std_mul: 3
+feature_corres:
+  max_dist_neighbor: 0.03
+  max_dist_no_neighbor: 0.02
+  max_normal_neighbor: 45
+  max_normal_no_neighbor: 45
+  mutual: true
+keyframe:
+  min_feat_num: 0
+  min_interval: 1
+  min_rot: 10
+mask_dir: /home/ferry/data/Code2/Research/Inhand_Activate/Tracking/BundleTrack/YCBInEOAT/cube_purple/001/masks
+model_dir: /home/ferry/data/Code2/Research/Inhand_Activate/BundleTrack/YCBInEOAT/object/006_mustard_bottle/tsdf/textured1.obj
+model_name: cube_purple
+p2p:
+  max_dist: 0.02
+  max_normal_angle: 45
+port: 5555
+ransac:
+  inlier_dist: 0.01
+  inlier_normal_angle: 45
+  max_iter: 2000
+  max_rot_deg_neighbor: 45
+  max_rot_no_neighbor: 10
+  max_trans_neighbor: 0.05
+  max_trans_no_neighbor: 0.02
+  num_sample: 3
+sift:
+  contrastThreshold: 0.01
+  edgeThreshold: 50
+  nOctaveLayers: 3
+  scales:
+  - 2
+  - 4
+  - 8
+  sigma: 1.6

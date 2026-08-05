@@ -1,0 +1,31 @@
+/Tracking/BundleTrack/build/
+/Tracking/BundleTrack/results/
+/Tracking/BundleTrack/.idea/
+/Tracking/BundleTrack/YCBInEOAT/
+/sam_model
+/reconstruction/offline/result
+/Real_deploy/results
+/Active/keyframes
+/Active/AzureKinectDK/azure_record_out
+/runs/
+/Tracking/runs/
+/reconstruction/offline/GT_data
+
+# Local caches and interactive-viewer state
+/.idea/
+**/__pycache__/
+*.py[cod]
+/.polyscope.ini
+/imgui.ini
+
+# Local camera captures and generated timing logs
+/DepthCapture_*.png
+/DepthCamera_*.json
+/timing_stats.json
+
+# Large datasets and generated reconstruction outputs (archived externally)
+/Active/pcd/
+/Tracking/offline_cache/
+/demo/results/
+/reconstruction/offline/GT_data.zip
+/reconstruction/offline/Compute_Metric/trellis_*_eval*/
