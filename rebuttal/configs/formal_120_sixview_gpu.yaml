@@ -1,0 +1,16 @@
+base: formal_120_common.yaml
+
+runtime:
+  require_cuda: true
+
+experiment:
+  output_dir: rebuttal/results/formal_120_sixview_gpu
+
+planners:
+  pb_nbv:
+    # Strongest of the predeclared d/30, d/50, d/70 scale sanity sweep.
+    voxel_divisor: 70.0
+  ray_gpis:
+    # The uncertainty grid is visualization-only and is not part of NBV
+    # scoring. Use the minimum grid for runtime-fair planner evaluation.
+    grid_res: 2

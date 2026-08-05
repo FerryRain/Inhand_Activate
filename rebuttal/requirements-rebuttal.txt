@@ -1,0 +1,5 @@
+# Packages added/required on top of the existing robosyn environment.
+gpytorch==1.11
+linear-operator==0.5.3
+trimesh==3.23.5
+scikit-image==0.19.3

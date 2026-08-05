@@ -1,0 +1,11 @@
+base: base.yaml
+
+# Shared reportable protocol: exactly one initial RGB-D image followed by five
+# planner-selected images over 120 paired object/pose scenes. Concrete formal
+# configs must provide their own output directory and runtime requirements.
+environment:
+  bootstrap_offsets_deg: [0.0]
+
+experiment:
+  initial_pose_seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  actnerf_seeds: [0, 1, 2]

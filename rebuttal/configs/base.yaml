@@ -1,0 +1,98 @@
+seed: 2026
+
+environment:
+  backend: open3d_cpu
+  level: clean
+  bootstrap_degrees: 15.0
+  action_steps: 5
+  frames_per_action: 1
+  robustness:
+    pose_jitter_deg: 0.0
+    axis_deviation_deg: 0.0
+    magnitude_error_deg: 0.0
+    drift_per_step_deg: 0.0
+    pose_outlier_probability: 0.0
+    pose_outlier_deg: 0.0
+    mask_morphology_px: 0
+    occlusion_fraction: 0.0
+
+camera:
+  # Azure Kinect intrinsics scaled from 1280x720 to the configured resolution.
+  width: 400
+  height: 225
+  intrinsics:
+    - [189.85466, 0.0, 200.37016]
+    - [0.0, 189.81417, 114.78028]
+    - [0.0, 0.0, 1.0]
+  distance: 0.42
+
+actions:
+  names: [minus_x, minus_y, plus_z]
+  # Medians estimated at frame 180 (~6 s at 30 Hz) from six axis-labelled logs each.
+  angles_deg:
+    minus_x: 106.48
+    minus_y: 55.76
+    plus_z: 82.38
+
+candidates:
+  count: 256
+
+assets:
+  output_dir: rebuttal/assets/objects
+  target_diagonal_m: 0.12
+  poisson_depth: 7
+  objects: [Cube, Cylinder, green_Pepper, L_Shaped, Cross, Corner, Bowl, Thin_Irregular]
+
+fusion:
+  voxel_size: 0.0015
+  depth_stride: 2
+  filter_mode: all
+  min_view_change_deg: 8.0
+  min_visibility_ratio: 0.65
+  max_pose_error_deg: 6.0
+
+evaluation:
+  thresholds_m: [0.002, 0.005, 0.010]
+  gt_sample_count: 30000
+
+experiment:
+  initial_pose_seeds: [0, 1, 2, 3, 4]
+  actnerf_seeds: [0, 1, 2]
+  # Concrete experiment configs override this path. It prevents accidental
+  # development runs from being mixed with reportable results.
+  output_dir: rebuttal/results/_scratch
+  save_images: true
+  counterfactual: true
+
+planners:
+  enabled: [fixed, pb_nbv, ray_gpis, actnerf]
+  fixed:
+    schedule: [plus_z, minus_x, minus_y, plus_z, minus_x]
+  pb_nbv:
+    voxel_divisor: 50.0
+    max_ellipsoids: 10
+    partitions: 4
+    use_partition: true
+    occupied_penalty: 1.0
+    ray_stride: 8
+  ray_gpis:
+    voxel_size: 0.002
+    max_train: 1200
+    train_iters: 40
+    grid_res: 20
+    band_samples: 24
+    receptive_field_k: 32
+    receptive_field_min_cos: 0.96
+    novelty_beta: 4.0
+    variant: full
+  actnerf:
+    ensemble_size: 5
+    hidden_dim: 64
+    train_iterations: 100
+    rays_per_batch: 512
+    samples_per_ray: 32
+    score_resolution: 20
+    learning_rate: 0.001
+    opacity_threshold: 0.05
+    near: 0.25
+    far: 0.55

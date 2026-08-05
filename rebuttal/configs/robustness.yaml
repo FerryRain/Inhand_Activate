@@ -1,0 +1,52 @@
+base: formal_120_sixview_gpu.yaml
+
+environment:
+  level: realistic
+  frames_per_action: 5
+
+experiment:
+  output_dir: rebuttal/results/robustness
+  counterfactual: false
+
+planners:
+  enabled: [ray_gpis]
+
+robustness_conditions:
+  clean:
+    pose_jitter_deg: 0.0
+    axis_deviation_deg: 0.0
+    magnitude_error_deg: 0.0
+    drift_per_step_deg: 0.0
+    pose_outlier_probability: 0.0
+    pose_outlier_deg: 0.0
+    mask_morphology_px: 0
+    occlusion_fraction: 0.0
+  mild:
+    pose_jitter_deg: 1.0
+    axis_deviation_deg: 2.0
+    magnitude_error_deg: 2.0
+    drift_per_step_deg: 0.3
+    pose_outlier_probability: 0.02
+    pose_outlier_deg: 8.0
+    mask_morphology_px: 1
+    occlusion_fraction: 0.10
+  moderate:
+    pose_jitter_deg: 3.0
+    axis_deviation_deg: 5.0
+    magnitude_error_deg: 5.0
+    drift_per_step_deg: 0.8
+    pose_outlier_probability: 0.08
+    pose_outlier_deg: 15.0
+    mask_morphology_px: 2
+    occlusion_fraction: 0.20
+  severe:
+    pose_jitter_deg: 6.0
+    axis_deviation_deg: 10.0
+    magnitude_error_deg: 10.0
+    drift_per_step_deg: 1.5
+    pose_outlier_probability: 0.15
+    pose_outlier_deg: 25.0
+    mask_morphology_px: 3
+    occlusion_fraction: 0.35
+
+filter_modes: [all, motion_only, full]

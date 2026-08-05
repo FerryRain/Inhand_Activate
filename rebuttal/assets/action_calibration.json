@@ -1,0 +1,205 @@
+{
+  "fps": 30.0,
+  "seconds": 6.0,
+  "target_frames": 180,
+  "actions": {
+    "minus_x": {
+      "axis_label": "x",
+      "median_angle_deg": 106.47934768006431,
+      "episodes": [
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/tetraprism/x/keyframes/poses",
+          "end_frame": 177,
+          "angle_deg": 145.18869937489646,
+          "rotvec": [
+            -2.532117873328488,
+            0.029946079917266027,
+            0.09350898019053575
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_purple/x/keyframes/poses",
+          "end_frame": 180,
+          "angle_deg": 160.93884258025975,
+          "rotvec": [
+            1.8485863951824104,
+            0.1240329827585105,
+            -2.111240085875014
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_obj_01/x/keyframes/poses",
+          "end_frame": 176,
+          "angle_deg": 91.1930728184759,
+          "rotvec": [
+            0.13627315504529675,
+            -1.4837712380471553,
+            0.5595576623016619
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/Big_Cylinder/x/keyframes/poses",
+          "end_frame": 176,
+          "angle_deg": 53.318175978128984,
+          "rotvec": [
+            -0.9125119994006992,
+            0.12366767302912231,
+            0.13417546063094415
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_obj_02/x/keyframes/poses",
+          "end_frame": 181,
+          "angle_deg": 121.76562254165272,
+          "rotvec": [
+            -2.0926237550474607,
+            -0.3604292602592434,
+            0.0868244570170046
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/green_pepper/x/keyframes/poses",
+          "end_frame": 180,
+          "angle_deg": 63.70811970586498,
+          "rotvec": [
+            0.01909798756000895,
+            0.6747519883028053,
+            0.8835741117646568
+          ]
+        }
+      ]
+    },
+    "minus_y": {
+      "axis_label": "y",
+      "median_angle_deg": 55.76306834268152,
+      "episodes": [
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/tetraprism/y/keyframes/poses",
+          "end_frame": 175,
+          "angle_deg": 61.74617802277076,
+          "rotvec": [
+            0.15788384275147477,
+            -1.046332772892584,
+            0.20406347421846208
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_purple/y/keyframes/poses",
+          "end_frame": 174,
+          "angle_deg": 33.23436318820909,
+          "rotvec": [
+            0.2698261248307396,
+            -0.45205172823713435,
+            0.24351593827031787
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_obj_01/y/keyframes/poses",
+          "end_frame": 176,
+          "angle_deg": 49.77995866259228,
+          "rotvec": [
+            -0.10931713575344613,
+            -0.8164519992048772,
+            0.27624509565094074
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/Big_Cylinder/y/keyframes/poses",
+          "end_frame": 180,
+          "angle_deg": 100.72646192435596,
+          "rotvec": [
+            -0.27523069572737513,
+            -1.6895613536432468,
+            -0.4002799602443242
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_obj_02/y/keyframes/poses",
+          "end_frame": 176,
+          "angle_deg": 41.71606410315947,
+          "rotvec": [
+            0.31881268455203216,
+            -0.5442578709380065,
+            0.36365672800529436
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/green_pepper/y/keyframes/poses",
+          "end_frame": 181,
+          "angle_deg": 71.70621902900649,
+          "rotvec": [
+            -0.04279799840550918,
+            1.1542028266488331,
+            -0.4819341093555956
+          ]
+        }
+      ]
+    },
+    "plus_z": {
+      "axis_label": "z",
+      "median_angle_deg": 82.38086258986442,
+      "episodes": [
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/tetraprism/z/keyframes/poses",
+          "end_frame": 179,
+          "angle_deg": 58.3856039689452,
+          "rotvec": [
+            -0.32096260164252177,
+            -0.004932421749320752,
+            -0.9671414214077604
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_purple/z/keyframes/poses",
+          "end_frame": 181,
+          "angle_deg": 49.572325410890265,
+          "rotvec": [
+            -0.0680994294140721,
+            -0.3108160843197598,
+            -0.8045665803039935
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_obj_01/z/keyframes/poses",
+          "end_frame": 178,
+          "angle_deg": 170.11046328080826,
+          "rotvec": [
+            -0.9741639415486831,
+            -0.15280133796082734,
+            -2.800454282501401
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/Big_Cylinder/z/keyframes/poses",
+          "end_frame": 179,
+          "angle_deg": 105.96487213236625,
+          "rotvec": [
+            -1.5034576516182785,
+            0.770707610937913,
+            -0.7523550053260083
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/cube_obj_02/z/keyframes/poses",
+          "end_frame": 181,
+          "angle_deg": 77.31694879872218,
+          "rotvec": [
+            -0.17144148031053105,
+            -0.25314511645080195,
+            -1.3143443471425342
+          ]
+        },
+        {
+          "log": "Real_deploy/results/ablation/offline_tracking/green_pepper/z/keyframes/poses",
+          "end_frame": 180,
+          "angle_deg": 87.44477638100666,
+          "rotvec": [
+            -0.6684190651986722,
+            0.170557306104139,
+            -1.361400141205286
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# Python/runtime clutter
+__pycache__/
+*.py[cod]
+results/_scratch/
+assets/objects/manifest.json
+
+# Per-episode raw data are archived externally; keep result summaries, tables,
+# validation reports, and plots visible to Git.
+results/**/pose_*/

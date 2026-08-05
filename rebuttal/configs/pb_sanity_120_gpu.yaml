@@ -1,0 +1,7 @@
+base: formal_120_sixview_gpu.yaml
+
+experiment:
+  output_dir: rebuttal/results/pb_sanity_120_gpu
+
+planners:
+  enabled: [pb_nbv_d30, pb_nbv_d50, pb_nbv_d70, pb_nbv_d50_no_partition]

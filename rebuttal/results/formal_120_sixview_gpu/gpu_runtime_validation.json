@@ -1,0 +1,38 @@
+{
+  "methods": {
+    "fixed": {
+      "episodes": 120,
+      "planning_steps": 600,
+      "devices": {
+        "native_cpu": 600
+      },
+      "invalid_surface_steps": 0
+    },
+    "pb_nbv": {
+      "episodes": 120,
+      "planning_steps": 600,
+      "devices": {
+        "native_cpu": 600
+      },
+      "invalid_surface_steps": 0
+    },
+    "ray_gpis": {
+      "episodes": 120,
+      "planning_steps": 600,
+      "devices": {
+        "cuda": 600
+      },
+      "invalid_surface_steps": 0
+    },
+    "actnerf": {
+      "episodes": 360,
+      "planning_steps": 1800,
+      "devices": {
+        "cuda": 1800
+      },
+      "invalid_surface_steps": 0
+    }
+  },
+  "errors": [],
+  "valid": true
+}
