@@ -37,6 +37,9 @@ class PointCloudFusion:
         self.min_view_change_deg = float(cfg["fusion"].get("min_view_change_deg", 0.0))
         self.min_visibility_ratio = float(cfg["fusion"].get("min_visibility_ratio", 0.0))
         self.max_pose_error_deg = float(cfg["fusion"].get("max_pose_error_deg", float("inf")))
+        self.max_translation_error_m = float(
+            cfg["fusion"].get("max_translation_error_m", float("inf"))
+        )
         self.cloud = o3d.geometry.PointCloud()
         self.frame_points: List[np.ndarray] = []
         self.observations: List[Observation] = []
@@ -50,6 +53,7 @@ class PointCloudFusion:
         out.min_view_change_deg = self.min_view_change_deg
         out.min_visibility_ratio = self.min_visibility_ratio
         out.max_pose_error_deg = self.max_pose_error_deg
+        out.max_translation_error_m = self.max_translation_error_m
         out.cloud = copy.deepcopy(self.cloud)
         out.frame_points = [points.copy() for points in self.frame_points]
         out.observations = list(self.observations)
@@ -73,7 +77,9 @@ class PointCloudFusion:
             "accepted": bool(accepted),
             "reason": reason,
             "pose_error_deg": float(observation.pose_error_deg),
+            "translation_error_m": float(observation.translation_error_m),
             "visibility_ratio": float(observation.visibility_ratio),
+            "fault_tags": list(observation.fault_tags),
         })
         if not accepted:
             return np.zeros((0, 3), dtype=np.float32)
@@ -101,4 +107,6 @@ class PointCloudFusion:
             return False, "visibility"
         if observation.pose_error_deg > self.max_pose_error_deg:
             return False, "pose_error"
+        if observation.translation_error_m > self.max_translation_error_m:
+            return False, "translation_error"
         return True, "accepted"

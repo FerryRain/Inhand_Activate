@@ -1,0 +1,25 @@
+{
+  "device": "NVIDIA GeForce RTX 4090 D",
+  "software": {
+    "torch": "2.4.1+cu121",
+    "pytorch3d": "0.7.8",
+    "gpytorch": "1.11"
+  },
+  "single_episode_end_to_end_seconds": {
+    "scipy_cpu_evaluator": 3.6680155380017823,
+    "pytorch3d_cuda_evaluator": 3.211109515003045
+  },
+  "end_to_end_speedup": 1.142289864747804,
+  "metric_equivalence_sample": {
+    "points": 2136,
+    "recall_at_5_absolute_difference": 0.0,
+    "f_at_5_absolute_difference": 0.0,
+    "chamfer_m_absolute_difference": 2.0331772290077543e-11
+  },
+  "hit_only_optimization": {
+    "description": "Reuse the hit mask already computed inside the GPIS estimate instead of repeating 256 CPU ray tests.",
+    "previous_moderate_noise_time_per_step_seconds": 0.175,
+    "current_contiguous_hole_time_per_step_seconds": 0.12978279548551655,
+    "full_current_time_per_step_seconds": 0.12964749386546828
+  }
+}

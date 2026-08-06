@@ -1,0 +1,2 @@
+scenario,metric,full,ablation,ablated,positive_means_full_better,mean_improvement,ci95_low,ci95_high,p_two_sided,pairs,wins,ties,losses
+pose_stability,severe_score_map_correlation,0.5028286482176738,ray_gpis_pointwise,0.27242170183221937,True,0.23040694638545445,0.20586101685290076,0.2535088480818496,3.876016365657101e-12,64,63,0,1

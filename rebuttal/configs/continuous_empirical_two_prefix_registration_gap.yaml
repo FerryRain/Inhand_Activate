@@ -1,0 +1,63 @@
+base: continuous_empirical_one_step_motion.yaml
+
+# Two shared six-second histories precede the evaluated action. The first
+# prefix is geometrically valid and the second has pose/depth registration
+# failure. Axis pairs are balanced across pose seeds so no particular missing
+# direction is chosen based on planner outcomes.
+environment:
+  level: realistic
+  shared_prefix_sequences:
+    - [minus_x, minus_y]
+    - [minus_y, plus_z]
+    - [plus_z, minus_x]
+  recover_tracking_at_decision_boundary: true
+  stress:
+    name: empirical_two_prefix_registration_gap
+    # In-hand palm/finger occlusion remains during both history primitives;
+    # contact relaxes during the evaluated recovery primitive.
+    occlusion_schedule:
+      "0": 0.45
+      "1": 0.45
+      "2": 0.55
+      "3": 0.15
+    occlusion_default: 0.15
+    trajectory_pose_lag_frames_schedule:
+      "1": 0
+      "2": 2
+      "3": 0
+    camera_rotation_bias_deg_schedule:
+      "1": 0.0
+      "2": 5.0
+      "3": 0.0
+    camera_translation_bias_mm_schedule:
+      "1": 0.0
+      "2": 3.0
+      "3": 0.0
+    registration_failure_probability_schedule:
+      "1": 0.0
+      "2": 0.60
+      "3": 0.0
+    registration_dropout_fraction_schedule:
+      "1": 0.0
+      "2": 0.80
+      "3": 0.0
+  robustness:
+    pose_jitter_deg: 0.0
+    drift_per_step_deg: 0.0
+    translation_jitter_mm: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.0
+    mask_morphology_px: 1
+    occlusion_fraction: 0.0
+
+fusion:
+  filter_mode: motion_only
+  min_view_change_deg: 8.0
+
+evaluation:
+  one_step_primary_metric: selected_recovery_recall@5
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_two_prefix_registration_gap

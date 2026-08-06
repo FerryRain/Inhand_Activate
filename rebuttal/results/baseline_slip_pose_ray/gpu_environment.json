@@ -1,0 +1,18 @@
+{
+  "conda_environment": "robosyn_gpu",
+  "python": "3.8.20",
+  "torch": "2.4.1+cu121",
+  "torch_cuda_runtime": "12.1",
+  "gpytorch": "1.11",
+  "open3d": "0.15.2",
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 4090 D",
+  "driver": "560.35.03",
+  "memory_mib": 24564,
+  "compute_capability": "8.9",
+  "timing_protocol": "single-process wall clock with torch.cuda.synchronize at phase boundaries",
+  "native_devices": {
+    "pose_novelty": "cpu",
+    "ray_gpis": "cuda"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "methods": {
+    "ray_gpis_hit_only": {
+      "episodes": 64,
+      "planning_steps": 320,
+      "devices": {
+        "cuda": 320
+      },
+      "invalid_surface_steps": 0
+    },
+    "ray_gpis": {
+      "episodes": 64,
+      "planning_steps": 320,
+      "devices": {
+        "cuda": 320
+      },
+      "invalid_surface_steps": 0
+    }
+  },
+  "errors": [],
+  "valid": true
+}

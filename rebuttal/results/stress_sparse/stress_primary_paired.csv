@@ -1,0 +1,2 @@
+scenario,metric,full,ablation,ablated,positive_means_full_better,mean_improvement,ci95_low,ci95_high,p_two_sided,pairs,wins,ties,losses
+sparse,target_recall@5_auc,0.5898960372645022,ray_gpis_novelty_only,0.5920406293058418,True,-0.0021445920413395055,-0.019442661297148646,0.01106777545999931,0.820892333984375,64,8,48,8

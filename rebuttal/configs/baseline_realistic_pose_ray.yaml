@@ -1,0 +1,10 @@
+base: ablation_realistic.yaml
+
+# Dedicated Level-B planner comparison.  This is not a component ablation:
+# both planners are complete methods and differ only in their high-level score.
+experiment:
+  output_dir: rebuttal/results/baseline_realistic_pose_ray
+  counterfactual: true
+
+planners:
+  enabled: [pose_novelty, ray_gpis]

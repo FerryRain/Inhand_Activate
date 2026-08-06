@@ -68,6 +68,7 @@ planners:
   enabled: [fixed, pb_nbv, ray_gpis, actnerf]
   fixed:
     schedule: [plus_z, minus_x, minus_y, plus_z, minus_x]
+  pose_novelty: {}
   pb_nbv:
     voxel_divisor: 50.0
     max_ellipsoids: 10
@@ -75,6 +76,18 @@ planners:
     use_partition: true
     occupied_penalty: 1.0
     ray_stride: 8
+  er_gpis:
+    # Adapted exploration-GP core: surface samples plus two normal-offset
+    # dummy samples, capped to 900 exact-GP training points in total.
+    voxel_size: 0.002
+    max_train: 900
+    train_iters: 40
+    learning_rate: 0.1
+    noise: 0.0001
+    dummy_offset_scaled: 0.04
+    radial_samples: 24
+    radial_min_scaled: 0.25
+    radial_max_scaled: 1.20
   ray_gpis:
     voxel_size: 0.002
     max_train: 1200

@@ -1,0 +1,36 @@
+comparator,comparator_label,metric,pairs,mean_full_improvement,ci95_low,ci95_high,wins,ties,losses,p_two_sided,p_holm,supported
+pose_novelty,Pose-Novelty,missing_patch_recall@5,64,0.2238866378059945,0.13979018600629536,0.31362670947045856,21,42,1,1.430511474609375e-06,7.152557373046875e-06,True
+pose_novelty,Pose-Novelty,selected_f@5_gain,64,0.006855818160313363,-0.004849171993860622,0.019071495626933287,17,41,6,0.16952300071716309,nan,False
+pose_novelty,Pose-Novelty,selected_recall@5_gain,64,0.01033541666666667,-0.006649257812499996,0.028132721354166657,17,41,6,0.16952300071716309,nan,False
+pose_novelty,Pose-Novelty,chamfer_reduction_mm,64,0.23756766313454136,0.014366660252562726,0.4956711120030377,16,41,7,0.07486915588378906,nan,False
+pose_novelty,Pose-Novelty,score_gain_correlation,64,0.0859375,-0.0859375,0.2578125,22,30,12,0.2556125132832676,nan,False
+pose_novelty,Pose-Novelty,oracle_regret_f@5,64,0.006855818160313363,-0.004849171993860622,0.019071495626933287,17,41,6,0.16952300071716309,nan,False
+pose_novelty,Pose-Novelty,oracle_action_accuracy,64,0.15625,0.015625,0.296875,16,42,6,0.06341934204101562,nan,False
+ray_gpis_novelty_only,Novelty only,missing_patch_recall@5,64,0.0,0.0,0.0,0,64,0,1.0,1.0,False
+ray_gpis_novelty_only,Novelty only,selected_f@5_gain,64,0.0,0.0,0.0,0,64,0,1.0,nan,False
+ray_gpis_novelty_only,Novelty only,selected_recall@5_gain,64,0.0,0.0,0.0,0,64,0,1.0,nan,False
+ray_gpis_novelty_only,Novelty only,chamfer_reduction_mm,64,0.0,0.0,0.0,0,64,0,1.0,nan,False
+ray_gpis_novelty_only,Novelty only,score_gain_correlation,64,0.0,0.0,0.0,0,64,0,1.0,nan,False
+ray_gpis_novelty_only,Novelty only,oracle_regret_f@5,64,0.0,0.0,0.0,0,64,0,1.0,nan,False
+ray_gpis_novelty_only,Novelty only,oracle_action_accuracy,64,0.0,0.0,0.0,0,64,0,1.0,nan,False
+ray_gpis_uncertainty_only,Uncertainty only,missing_patch_recall@5,64,0.0036033908385744474,-0.04202571891950513,0.052508930958709704,3,57,4,1.0,1.0,False
+ray_gpis_uncertainty_only,Uncertainty only,selected_f@5_gain,64,0.0010938044481869792,-0.004992912589945244,0.007961340543407067,4,57,3,0.6875,nan,False
+ray_gpis_uncertainty_only,Uncertainty only,selected_recall@5_gain,64,0.0025088541666666653,-0.005680455729166665,0.012526471354166641,4,57,3,0.578125,nan,False
+ray_gpis_uncertainty_only,Uncertainty only,chamfer_reduction_mm,64,-0.01850515400292352,-0.20913652315357467,0.14421545474760922,4,57,3,1.0,nan,False
+ray_gpis_uncertainty_only,Uncertainty only,score_gain_correlation,62,-0.040746442606916546,-0.10252268484759709,0.015140639244039876,11,40,11,0.23476219177246094,nan,False
+ray_gpis_uncertainty_only,Uncertainty only,oracle_regret_f@5,64,0.0010938044481869792,-0.004992912589945244,0.007961340543407067,4,57,3,0.6875,nan,False
+ray_gpis_uncertainty_only,Uncertainty only,oracle_action_accuracy,64,0.015625,-0.0625,0.09375,4,57,3,0.8125,nan,False
+ray_gpis_pointwise,w/o receptive-field integration,missing_patch_recall@5,64,-0.03375167663648163,-0.07549654411005295,-0.0018168604651162788,0,60,4,0.125,0.5,False
+ray_gpis_pointwise,w/o receptive-field integration,selected_f@5_gain,64,-0.0023703477654158592,-0.007928120887729423,0.0022691315235926456,1,60,3,0.375,nan,False
+ray_gpis_pointwise,w/o receptive-field integration,selected_recall@5_gain,64,-0.0026161458333333323,-0.00962958333333333,0.0034552083333333344,1,60,3,0.625,nan,False
+ray_gpis_pointwise,w/o receptive-field integration,chamfer_reduction_mm,64,-0.06656286859652027,-0.23413296730723232,0.04546523268800229,1,60,3,0.625,nan,False
+ray_gpis_pointwise,w/o receptive-field integration,score_gain_correlation,64,-0.03125,-0.078125,0.0078125,1,59,4,0.1875,nan,False
+ray_gpis_pointwise,w/o receptive-field integration,oracle_regret_f@5,64,-0.0023703477654158592,-0.007928120887729423,0.0022691315235926456,1,60,3,0.375,nan,False
+ray_gpis_pointwise,w/o receptive-field integration,oracle_action_accuracy,64,-0.015625,-0.078125,0.03125,1,61,2,0.75,nan,False
+ray_gpis_hit_only,w/o miss-ray interpolation,missing_patch_recall@5,64,0.0232976108311167,-0.07286894794427551,0.11950026393699485,11,44,9,0.9272785186767578,1.0,False
+ray_gpis_hit_only,w/o miss-ray interpolation,selected_f@5_gain,64,0.005722824060680807,-0.004115285553812782,0.016466312166513793,13,43,8,0.32045745849609375,nan,False
+ray_gpis_hit_only,w/o miss-ray interpolation,selected_recall@5_gain,64,0.00828385416666667,-0.005192408854166656,0.022976093750000003,13,43,8,0.2877340316772461,nan,False
+ray_gpis_hit_only,w/o miss-ray interpolation,chamfer_reduction_mm,64,0.16577602218603715,-0.049081718861998525,0.41301300625491416,11,43,10,0.47333431243896484,nan,False
+ray_gpis_hit_only,w/o miss-ray interpolation,score_gain_correlation,64,0.0234375,-0.09375,0.140625,14,38,12,0.7835337817668915,nan,False
+ray_gpis_hit_only,w/o miss-ray interpolation,oracle_regret_f@5,64,0.005722824060680807,-0.004115285553812782,0.016466312166513793,13,43,8,0.32045745849609375,nan,False
+ray_gpis_hit_only,w/o miss-ray interpolation,oracle_action_accuracy,64,0.078125,-0.0625,0.21875,13,43,8,0.35541629791259766,nan,False

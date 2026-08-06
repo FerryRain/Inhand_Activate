@@ -1,0 +1,2 @@
+scenario,metric,full,ablation,ablated,positive_means_full_better,mean_improvement,ci95_low,ci95_high,p_two_sided,pairs,wins,ties,losses
+ghost,post_outlier_oracle_regret,0.01304369431812674,ray_gpis_uncertainty_only,0.011281986793472174,True,-0.001761707524654568,-0.0034593895595716137,-0.00017647724151106993,0.03809974445590569,64,18,18,28

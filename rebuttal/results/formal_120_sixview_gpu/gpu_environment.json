@@ -12,9 +12,11 @@
   "compute_capability": "8.9",
   "timing_protocol": "single-process wall clock with torch.cuda.synchronize at phase boundaries",
   "native_devices": {
-    "ray_gpis": "cuda",
-    "actnerf": "cuda",
+    "fixed": "cpu",
+    "pose_novelty": "cpu",
     "pb_nbv": "cpu",
-    "fixed": "cpu"
+    "er_gpis": "cuda",
+    "ray_gpis": "cuda",
+    "actnerf": "cuda"
   }
 }

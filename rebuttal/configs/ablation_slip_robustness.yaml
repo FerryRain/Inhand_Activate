@@ -1,0 +1,13 @@
+base: action_slip_realistic.yaml
+
+experiment:
+  output_dir: rebuttal/results/ablation_slip_robustness
+  counterfactual: true
+
+planners:
+  enabled:
+    - ray_gpis_novelty_only
+    - ray_gpis_uncertainty_only
+    - ray_gpis_pointwise
+    - ray_gpis_hit_only
+    - ray_gpis

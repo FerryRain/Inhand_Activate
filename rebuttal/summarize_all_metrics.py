@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List
 
 import numpy as np
+from scipy.stats import spearmanr
 
 from benchmark.config import load_config, resolved_path
 
@@ -26,6 +27,8 @@ EXPLORATION_FIELDS = (
     "recall@5_auc",
     "f@5_auc",
     "cumulative_active_gain_f@5",
+    "unseen_surface_discovery_ratio",
+    "unique_visibility_gain_per_action",
 )
 POLICY_FIELDS = (
     "selected_gain_f@5_per_action",
@@ -34,6 +37,9 @@ POLICY_FIELDS = (
     "correlation_valid_rate",
     "oracle_regret_f@5",
     "oracle_action_accuracy",
+    "zero_unique_gain_action_rate",
+    "consecutive_score_map_correlation",
+    "action_repetition_rate",
 )
 RUNTIME_FIELDS = (
     "representation_update_s",
@@ -41,6 +47,19 @@ RUNTIME_FIELDS = (
     "planning_time_s",
 )
 ALL_FIELDS = FINAL_FIELDS + EXPLORATION_FIELDS + POLICY_FIELDS + RUNTIME_FIELDS
+
+DISPLAY_NAMES = {
+    "fixed": "Fixed schedule",
+    "pose_novelty": "Pose-Novelty",
+    "pb_nbv": "Adapted PB-NBV",
+    "er_gpis": "Adapted ER-GPIS",
+    "actnerf": "Adapted ActNeRF",
+    "ray_gpis_novelty_only": "Novelty only",
+    "ray_gpis_uncertainty_only": "Uncertainty only",
+    "ray_gpis_pointwise": "Pointwise GP",
+    "ray_gpis_hit_only": "Hit rays only",
+    "ray_gpis": "Full Ray-GPIS",
+}
 
 
 def _finite_mean(values: Iterable[float]) -> float:
@@ -112,6 +131,7 @@ def _derive_episode(item: Dict, policy_step_rows: List[Dict], curve_rows: List[D
     regrets = []
     accuracies = []
     consistency_errors = []
+    score_maps = []
     for step, quality in enumerate(policy):
         gains = _counterfactual_gains(episode_dir, step)
         selected_action = item["actions"][step]
@@ -123,6 +143,7 @@ def _derive_episode(item: Dict, policy_step_rows: List[Dict], curve_rows: List[D
         regret = float(oracle_gain - selected_gain)
         accuracy = float(selected_action == oracle_action)
         scores = quality.get("action_scores", {})
+        score_maps.append(np.load(str(episode_dir / ("step_%03d" % step) / "planner_scores.npy")))
         selected_gains.append(selected_gain)
         oracle_gains.append(oracle_gain)
         correlations.append(correlation)
@@ -150,6 +171,16 @@ def _derive_episode(item: Dict, policy_step_rows: List[Dict], curve_rows: List[D
             "plus_z_score": _as_float(scores.get("plus_z", float("nan"))),
         })
 
+    consecutive_score_correlations = []
+    for previous, current in zip(score_maps[:-1], score_maps[1:]):
+        valid = np.isfinite(previous) & np.isfinite(current)
+        if np.sum(valid) < 3 or np.ptp(previous[valid]) <= 1e-12 or np.ptp(current[valid]) <= 1e-12:
+            continue
+        consecutive_score_correlations.append(float(spearmanr(previous[valid], current[valid]).correlation))
+
+    visibility_deltas = np.diff(np.asarray(visibility_curve, dtype=np.float64))
+    initially_unseen = max(1.0 - visibility_curve[0], 1e-12)
+
     last = reconstruction[-1]
     result = {
         "planner": planner,
@@ -164,6 +195,10 @@ def _derive_episode(item: Dict, policy_step_rows: List[Dict], curve_rows: List[D
         "recall@5_auc": float(item["recall@5_auc"]),
         "f@5_auc": float(item["f@5_auc"]),
         "cumulative_active_gain_f@5": float(last["f@5"] - reconstruction[0]["f@5"]),
+        "unseen_surface_discovery_ratio": float(
+            (visibility_curve[-1] - visibility_curve[0]) / initially_unseen
+        ),
+        "unique_visibility_gain_per_action": _finite_mean(visibility_deltas),
         "selected_gain_f@5_per_action": _finite_mean(selected_gains),
         "oracle_gain_f@5_per_action": _finite_mean(oracle_gains),
         "score_gain_correlation": _finite_mean(correlations),
@@ -175,6 +210,9 @@ def _derive_episode(item: Dict, policy_step_rows: List[Dict], curve_rows: List[D
         # gains. It is therefore defined for the open-loop fixed schedule too,
         # even though score--gain correlation is not.
         "oracle_action_accuracy": _finite_mean(accuracies),
+        "zero_unique_gain_action_rate": float(np.mean(visibility_deltas <= 1e-12)),
+        "consecutive_score_map_correlation": _finite_mean(consecutive_score_correlations),
+        "action_repetition_rate": float(item.get("action_repetition_rate", float("nan"))),
         "representation_update_s": _finite_mean(row["representation_update_s"] for row in runtime),
         "candidate_scoring_s": _finite_mean(row["candidate_scoring_s"] for row in runtime),
         "planning_time_s": _finite_mean(row["planning_s"] for row in runtime),
@@ -224,6 +262,28 @@ def _aggregate(paired: List[Dict]) -> List[Dict]:
     return rows
 
 
+def _per_object(paired: List[Dict]) -> List[Dict]:
+    groups = defaultdict(list)
+    for item in paired:
+        groups[(item["planner"], item["object"])].append(item)
+    rows = []
+    fields = (
+        "f@5_auc",
+        "recall@5_auc",
+        "final_f@5",
+        "visibility_coverage_auc",
+        "score_gain_correlation",
+        "oracle_regret_f@5",
+        "consecutive_score_map_correlation",
+    )
+    for (planner, object_name), items in sorted(groups.items()):
+        row = {"planner": planner, "object": object_name, "scenes": len(items)}
+        for field in fields:
+            row[field] = _finite_mean(item[field] for item in items)
+        rows.append(row)
+    return rows
+
+
 def _write_csv(path: Path, rows: List[Dict], fieldnames=None):
     if not rows:
         return
@@ -254,16 +314,22 @@ def _fmt(row: Dict, field: str, digits: int = 4, scale: float = 1.0) -> str:
 
 def _markdown(rows: List[Dict], validation: Dict, cfg: Dict) -> str:
     by_name = {row["planner"]: row for row in rows}
-    order = [name for name in ("fixed", "pb_nbv", "actnerf", "ray_gpis") if name in by_name]
+    configured = list(cfg["planners"]["enabled"])
+    order = [name for name in configured if name in by_name]
+    order.extend(name for name in sorted(by_name) if name not in order)
     paired_counts = {int(row["paired_scenes"]) for row in rows}
     paired_text = str(next(iter(paired_counts))) if len(paired_counts) == 1 else "/".join(map(str, sorted(paired_counts)))
     bootstrap_offsets = cfg["environment"].get("bootstrap_offsets_deg")
     bootstrap_count = len(bootstrap_offsets) if bootstrap_offsets is not None else 3
+    interval_note = (
+        " ActNeRF's initialization seeds are averaged within each scene first."
+        if "actnerf" in by_name else ""
+    )
     lines = [
-        "# Complete baseline metric summary",
+        "# Complete experiment metric summary",
         "",
-        f"All uncertainty intervals are 95% normal-approximation confidence intervals over {paired_text} paired object/pose scenes. "
-        "ActNeRF's initialization seeds are averaged within each scene first.",
+        f"All uncertainty intervals are 95% normal-approximation confidence intervals over {paired_text} paired object/pose scenes."
+        + interval_note,
         "",
         "## A. Final geometry",
         "",
@@ -273,7 +339,7 @@ def _markdown(rows: List[Dict], validation: Dict, cfg: Dict) -> str:
     for name in order:
         row = by_name[name]
         lines.append("| %s | %s | %s | %s |" % (
-            name,
+            DISPLAY_NAMES.get(name, name),
             _fmt(row, "final_recall@5"),
             _fmt(row, "final_f@5"),
             _fmt(row, "final_chamfer_mm", digits=3),
@@ -288,7 +354,7 @@ def _markdown(rows: List[Dict], validation: Dict, cfg: Dict) -> str:
     for name in order:
         row = by_name[name]
         lines.append("| %s | %s | %s | %s | %s | %s |" % (
-            name,
+            DISPLAY_NAMES.get(name, name),
             _fmt(row, "final_visibility_coverage"),
             _fmt(row, "visibility_coverage_auc"),
             _fmt(row, "recall@5_auc"),
@@ -309,7 +375,7 @@ def _markdown(rows: List[Dict], validation: Dict, cfg: Dict) -> str:
     for name in order:
         row = by_name[name]
         lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
-            name,
+            DISPLAY_NAMES.get(name, name),
             _fmt(row, "selected_gain_f@5_per_action"),
             _fmt(row, "oracle_gain_f@5_per_action"),
             _fmt(row, "score_gain_correlation"),
@@ -319,9 +385,15 @@ def _markdown(rows: List[Dict], validation: Dict, cfg: Dict) -> str:
         ))
     lines += [
         "",
-        "At each state, all three executable actions {-x, -y, +z} are rolled out counterfactually. "
-        "Spearman correlation compares their action scores with their realized F@5 gains. "
-        "Fixed has no planner scores, so only its correlation is undefined; oracle accuracy remains measurable from its selected action.",
+        (
+            "At each state, all three executable actions {-x, -y, +z} are rolled out counterfactually. "
+            "Spearman correlation compares their action scores with their realized F@5 gains. "
+            + (
+                "Fixed has no planner scores, so only its correlation is undefined; oracle accuracy remains measurable from its selected action."
+                if "fixed" in by_name else
+                "Correlation is averaged over steps with non-constant finite action scores and realized gains."
+            )
+        ),
         "",
         "## D. Runtime per planning step",
         "",
@@ -331,14 +403,18 @@ def _markdown(rows: List[Dict], validation: Dict, cfg: Dict) -> str:
     for name in order:
         row = by_name[name]
         lines.append("| %s | %s | %s | %s |" % (
-            name,
+            DISPLAY_NAMES.get(name, name),
             _fmt(row, "representation_update_s", digits=3),
             _fmt(row, "candidate_scoring_s", digits=6),
             _fmt(row, "planning_time_s", digits=3),
         ))
     lines += [
         "",
-        "Total planning time is representation update plus candidate scoring. For adapted ActNeRF, representation update is five-model ensemble training and candidate scoring is ensemble rendering/variance evaluation.",
+        (
+            "Total planning time is representation update plus candidate scoring. For adapted ActNeRF, representation update is five-model ensemble training and candidate scoring is ensemble rendering/variance evaluation."
+            if "actnerf" in by_name else
+            "Total planning time is representation update plus candidate scoring, with CUDA synchronization at both phase boundaries."
+        ),
         "",
         "## Consistency checks",
         "",
@@ -365,12 +441,14 @@ def main():
     episode_rows = [_derive_episode(item, policy_steps, curves) for item in summaries]
     paired = _collapse_pairs(episode_rows)
     aggregate = _aggregate(paired)
+    per_object = _per_object(paired)
 
     aggregate_fields = ["planner", "paired_scenes"]
     for field in ALL_FIELDS:
         aggregate_fields.extend((field, field + "_ci95", field + "_n"))
     _write_csv(root / "all_metrics_episodes.csv", episode_rows)
     _write_csv(root / "all_metrics_paired.csv", paired)
+    _write_csv(root / "per_object_table.csv", per_object)
     _write_csv(root / "all_metrics_aggregate.csv", aggregate, aggregate_fields)
     _write_csv(root / "policy_step_metrics.csv", policy_steps)
     _write_csv(root / "reconstruction_step_metrics.csv", curves)
@@ -378,6 +456,24 @@ def main():
     _write_category_csv(root, "exploration_efficiency_metrics.csv", aggregate, EXPLORATION_FIELDS)
     _write_category_csv(root, "decision_policy_metrics.csv", aggregate, POLICY_FIELDS)
     _write_category_csv(root, "runtime_metrics.csv", aggregate, RUNTIME_FIELDS)
+    if any(row["planner"].startswith("ray_gpis_") for row in aggregate):
+        ablation_fields = ["planner", "paired_scenes"]
+        for field in (
+            "f@5_auc",
+            "final_f@5",
+            "score_gain_correlation",
+            "oracle_regret_f@5",
+            "oracle_action_accuracy",
+            "consecutive_score_map_correlation",
+            "action_repetition_rate",
+            "planning_time_s",
+        ):
+            ablation_fields.extend((field, field + "_ci95"))
+        _write_csv(
+            root / "ablation_table.csv",
+            [{name: row[name] for name in ablation_fields} for row in aggregate],
+            ablation_fields,
+        )
 
     validation = {
         "episodes": len(episode_rows),

@@ -7,6 +7,7 @@ experiment:
   output_dir: rebuttal/results/formal_120_sixview_gpu
 
 planners:
+  enabled: [fixed, pose_novelty, pb_nbv, er_gpis, ray_gpis, actnerf]
   pb_nbv:
     # Strongest of the predeclared d/30, d/50, d/70 scale sanity sweep.
     voxel_divisor: 70.0

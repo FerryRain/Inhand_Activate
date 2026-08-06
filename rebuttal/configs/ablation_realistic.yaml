@@ -1,0 +1,43 @@
+base: formal_120_sixview_gpu.yaml
+
+# Level-B component ablation under a fixed, predeclared moderate noise profile.
+# The protocol remains exactly one initial RGB-D image plus five planner-selected
+# images; unlike robustness.yaml, no intermediate video frames enter fusion.
+environment:
+  level: realistic
+  frames_per_action: 1
+  action_calibration_path: rebuttal/assets/action_calibration.json
+  robustness:
+    action_noise_mode: empirical
+    action_noise_scale: 0.50
+    pose_jitter_deg: 3.0
+    drift_per_step_deg: 0.8
+    translation_jitter_mm: 1.5
+    translation_drift_per_step_mm: 0.5
+    pose_outlier_probability: 0.08
+    pose_outlier_deg: 15.0
+    translation_outlier_mm: 8.0
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.03
+    mask_morphology_px: 2
+    occlusion_fraction: 0.20
+    occlusion_fraction_std: 0.10
+    occlusion_outlier_probability: 0.08
+    occlusion_outlier_fraction: 0.30
+
+fusion:
+  # Keep the main ablation focused on planner components. With one image per
+  # action, keyframe filtering is evaluated separately in robustness.yaml.
+  filter_mode: all
+
+experiment:
+  output_dir: rebuttal/results/ablations_realistic
+  counterfactual: true
+
+planners:
+  enabled:
+    - ray_gpis_novelty_only
+    - ray_gpis_uncertainty_only
+    - ray_gpis_pointwise
+    - ray_gpis_hit_only
+    - ray_gpis

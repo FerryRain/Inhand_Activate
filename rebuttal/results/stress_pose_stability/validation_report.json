@@ -1,0 +1,10 @@
+{
+  "expected_rows": 7680,
+  "rows": 7680,
+  "unique_keys": 7680,
+  "devices": [
+    "cuda"
+  ],
+  "errors": [],
+  "valid": true
+}

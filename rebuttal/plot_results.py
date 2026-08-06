@@ -15,8 +15,14 @@ from benchmark.config import load_config, resolved_path
 
 COLORS = {
     "fixed": "#777777",
+    "pose_novelty": "#CC79A7",
     "pb_nbv": "#E69F00",
+    "er_gpis": "#0072B2",
     "actnerf": "#56B4E9",
+    "ray_gpis_novelty_only": "#CC79A7",
+    "ray_gpis_uncertainty_only": "#D55E00",
+    "ray_gpis_pointwise": "#0072B2",
+    "ray_gpis_hit_only": "#F0E442",
     "ray_gpis": "#009E73",
 }
 

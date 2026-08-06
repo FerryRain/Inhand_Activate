@@ -1,0 +1,2 @@
+planner,paired_scenes,representation_update_s,representation_update_s_ci95,representation_update_s_n,candidate_scoring_s,candidate_scoring_s_ci95,candidate_scoring_s_n,planning_time_s,planning_time_s_ci95,planning_time_s_n
+ray_gpis,64,0.27836802060660376,0.03177610282708123,64,5.4265674407361075e-05,1.633635056916911e-06,64,0.2784222862810111,0.031775738685894644,64

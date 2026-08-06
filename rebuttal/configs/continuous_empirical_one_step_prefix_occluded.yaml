@@ -1,0 +1,7 @@
+base: continuous_empirical_one_step_occluded.yaml
+
+environment:
+  shared_prefix_actions: [plus_z, minus_x, minus_y]
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_one_step_prefix_occluded

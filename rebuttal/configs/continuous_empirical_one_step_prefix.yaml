@@ -1,0 +1,11 @@
+base: continuous_empirical_one_step_motion.yaml
+
+# Before the evaluated decision, all methods receive one identical empirical
+# six-second prefix. The prefix action is balanced by pose seed, producing the
+# repeating sequence +z, -x, -y across the 15 initial orientations. The
+# reported gain still belongs only to the second, planner-selected primitive.
+environment:
+  shared_prefix_actions: [plus_z, minus_x, minus_y]
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_one_step_prefix

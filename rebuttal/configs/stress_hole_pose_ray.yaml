@@ -1,0 +1,7 @@
+base: stress_hole.yaml
+
+# Add the pose-only baseline to the already pre-registered contiguous-hole
+# robustness condition. Existing Full Ray-GPIS episodes in the shared output
+# root are reused unchanged; only missing Pose-Novelty episodes are generated.
+planners:
+  enabled: [pose_novelty, ray_gpis]

@@ -31,7 +31,8 @@ def main():
             "devices": dict(devices),
             "invalid_surface_steps": invalid_surface_steps,
         }
-        if method in {"ray_gpis", "actnerf"} and set(devices) != {"cuda"}:
+        requires_cuda = method in ("actnerf", "er_gpis") or method.startswith("ray_gpis")
+        if requires_cuda and set(devices) != {"cuda"}:
             errors.append("%s did not exclusively use CUDA: %s" % (method, dict(devices)))
     output = {
         "methods": report,
