@@ -1,0 +1,105 @@
+{
+  "experiment_name": "real_capture_pose_error",
+  "generated_utc": "2026-08-06T17:35:40.658967+00:00",
+  "config_path": "rebuttal/pose_error_real/config.json",
+  "intrinsics_path": "Tracking/BundleTrack/results/cam_K_A.txt",
+  "python": "3.8.20 (default, Oct  3 2024, 15:24:27) \n[GCC 11.2.0]",
+  "platform": "Linux-5.15.0-107-generic-x86_64-with-glibc2.17",
+  "numpy": "1.20.3",
+  "opencv": "4.12.0",
+  "scipy_rotation_convention": "R_noisy = Exp(delta_r) @ R_CO; t_noisy = t_CO + delta_t",
+  "pose_convention": "T_CO maps object-frame points into the camera frame",
+  "sequences": [
+    {
+      "name": "capture_001",
+      "keyframes": 164,
+      "first_frame": "000000",
+      "last_frame": "001191",
+      "clean_points": 45532
+    },
+    {
+      "name": "capture_002",
+      "keyframes": 125,
+      "first_frame": "000000",
+      "last_frame": "000588",
+      "clean_points": 45870
+    },
+    {
+      "name": "capture_xyz",
+      "keyframes": 112,
+      "first_frame": "000000",
+      "last_frame": "000595",
+      "clean_points": 45738
+    }
+  ],
+  "trials_per_nonzero_condition": 20,
+  "config": {
+    "experiment_name": "real_capture_pose_error",
+    "seed": 20260807,
+    "intrinsics_path": "Tracking/BundleTrack/results/cam_K_A.txt",
+    "sequences": [
+      {
+        "name": "capture_001",
+        "keyframes_dir": "Tracking/BundleTrack/results/001/keyframes"
+      },
+      {
+        "name": "capture_002",
+        "keyframes_dir": "Tracking/BundleTrack/results/002/keyframes"
+      },
+      {
+        "name": "capture_xyz",
+        "keyframes_dir": "Tracking/BundleTrack/results/xyz/keyframes"
+      }
+    ],
+    "conditions": [
+      {
+        "name": "clean",
+        "rotation_rms_deg": 0.0,
+        "translation_rms_mm": 0.0
+      },
+      {
+        "name": "1deg_1mm",
+        "rotation_rms_deg": 1.0,
+        "translation_rms_mm": 1.0
+      },
+      {
+        "name": "2deg_2mm",
+        "rotation_rms_deg": 2.0,
+        "translation_rms_mm": 2.0
+      },
+      {
+        "name": "5deg_5mm",
+        "rotation_rms_deg": 5.0,
+        "translation_rms_mm": 5.0
+      },
+      {
+        "name": "10deg_10mm",
+        "rotation_rms_deg": 10.0,
+        "translation_rms_mm": 10.0
+      }
+    ],
+    "trials": 20,
+    "noise": {
+      "temporal_correlation": 0.85,
+      "anchor_first_frame": true
+    },
+    "fusion": {
+      "depth_scale": 1000.0,
+      "depth_min_m": 0.1,
+      "depth_max_m": 1.2,
+      "mask_erode_px": 3,
+      "per_frame_voxel_m": 0.002,
+      "fusion_voxel_m": 0.002,
+      "max_points_per_frame": 2500
+    },
+    "evaluation": {
+      "max_points": 60000,
+      "thresholds_mm": [
+        2.0,
+        5.0,
+        10.0
+      ]
+    },
+    "output_dir": "rebuttal/pose_error_real/results"
+  }
+}

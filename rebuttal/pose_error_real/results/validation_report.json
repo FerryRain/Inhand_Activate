@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "expected_samples": 243,
+  "observed_samples": 243,
+  "checks": {
+    "expected_sample_count": true,
+    "unique_sequence_condition_trial_keys": true,
+    "finite_metrics": true,
+    "metric_ranges": true,
+    "realized_rms_matches_target": true,
+    "clean_reference_identity": true,
+    "aggregate_f5_nonincreasing": true,
+    "aggregate_distance_nondecreasing": true
+  }
+}

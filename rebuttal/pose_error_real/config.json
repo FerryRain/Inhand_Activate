@@ -1,0 +1,65 @@
+{
+  "experiment_name": "real_capture_pose_error",
+  "seed": 20260807,
+  "intrinsics_path": "Tracking/BundleTrack/results/cam_K_A.txt",
+  "sequences": [
+    {
+      "name": "capture_001",
+      "keyframes_dir": "Tracking/BundleTrack/results/001/keyframes"
+    },
+    {
+      "name": "capture_002",
+      "keyframes_dir": "Tracking/BundleTrack/results/002/keyframes"
+    },
+    {
+      "name": "capture_xyz",
+      "keyframes_dir": "Tracking/BundleTrack/results/xyz/keyframes"
+    }
+  ],
+  "conditions": [
+    {
+      "name": "clean",
+      "rotation_rms_deg": 0.0,
+      "translation_rms_mm": 0.0
+    },
+    {
+      "name": "1deg_1mm",
+      "rotation_rms_deg": 1.0,
+      "translation_rms_mm": 1.0
+    },
+    {
+      "name": "2deg_2mm",
+      "rotation_rms_deg": 2.0,
+      "translation_rms_mm": 2.0
+    },
+    {
+      "name": "5deg_5mm",
+      "rotation_rms_deg": 5.0,
+      "translation_rms_mm": 5.0
+    },
+    {
+      "name": "10deg_10mm",
+      "rotation_rms_deg": 10.0,
+      "translation_rms_mm": 10.0
+    }
+  ],
+  "trials": 20,
+  "noise": {
+    "temporal_correlation": 0.85,
+    "anchor_first_frame": true
+  },
+  "fusion": {
+    "depth_scale": 1000.0,
+    "depth_min_m": 0.1,
+    "depth_max_m": 1.2,
+    "mask_erode_px": 3,
+    "per_frame_voxel_m": 0.002,
+    "fusion_voxel_m": 0.002,
+    "max_points_per_frame": 2500
+  },
+  "evaluation": {
+    "max_points": 60000,
+    "thresholds_mm": [2.0, 5.0, 10.0]
+  },
+  "output_dir": "rebuttal/pose_error_real/results"
+}
