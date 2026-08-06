@@ -1,0 +1,30 @@
+base: continuous_empirical_one_step_motion.yaml
+
+# Secondary condition: the identical empirical motion branches with dynamic
+# palm/finger occlusion and RGB-D corruption, while GT tracking pose remains
+# exact. This isolates failed geometric acquisition from pose-estimation error.
+environment:
+  level: realistic
+  robustness:
+    pose_jitter_deg: 0.0
+    drift_per_step_deg: 0.0
+    translation_jitter_mm: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.03
+    mask_morphology_px: 2
+    occlusion_fraction: 0.25
+    occlusion_fraction_std: 0.10
+    occlusion_outlier_probability: 0.08
+    occlusion_outlier_fraction: 0.30
+
+fusion:
+  filter_mode: full
+  min_view_change_deg: 8.0
+  min_visibility_ratio: 0.40
+  max_pose_error_deg: 1.0
+  max_translation_error_m: 0.001
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_one_step_occluded

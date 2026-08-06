@@ -1,0 +1,29 @@
+base: formal_120_sixview_gpu.yaml
+
+environment:
+  level: realistic
+  action_calibration_path: rebuttal/assets/action_calibration.json
+  robustness:
+    action_noise_mode: empirical
+    action_noise_scale: 0.50
+    depth_noise_mm: 1.5
+  stress:
+    name: observed_sparse_surface
+    structured_dropout_steps: [0]
+    structured_dropout_fraction: 0.35
+    structured_dropout_patches: [4, 8]
+
+evaluation:
+  backend: pytorch3d_cuda
+  target_surface_mode: removed_observation
+
+fusion:
+  filter_mode: all
+
+experiment:
+  initial_pose_seeds: [15, 16, 17, 18, 19, 20, 21, 22]
+  output_dir: rebuttal/results/stress_sparse
+  counterfactual: true
+
+planners:
+  enabled: [ray_gpis_novelty_only, ray_gpis]

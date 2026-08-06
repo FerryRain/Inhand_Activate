@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 import open3d as o3d
+from scipy.spatial import cKDTree
 from scipy.stats import spearmanr
 
 from .assets import load_mesh, prepare_assets
@@ -24,12 +25,21 @@ from .geometry import (
     next_view_direction,
 )
 from .io import save_step, write_json
-from .planners import ActNeRFPlanner, FixedSchedulePlanner, PBNBVPlanner, RayGPISPlanner
+from .planners import (
+    ActNeRFPlanner,
+    ERGPISPlanner,
+    FixedSchedulePlanner,
+    PBNBVPlanner,
+    PoseNoveltyPlanner,
+    RayGPISPlanner,
+)
 
 
 PLANNER_TYPES = {
     "fixed": FixedSchedulePlanner,
+    "pose_novelty": PoseNoveltyPlanner,
     "pb_nbv": PBNBVPlanner,
+    "er_gpis": ERGPISPlanner,
     "ray_gpis": RayGPISPlanner,
     "actnerf": ActNeRFPlanner,
 }
@@ -65,18 +75,36 @@ def _action_scores(scores, assignments):
     return out
 
 
-def _counterfactual(env, fusion, evaluator, current_metrics):
+def _counterfactual(env, fusion, evaluator, current_metrics, target_points=None):
     outcomes = {}
     for action in ACTIONS:
         cloned_env = env.clone()
         cloned_fusion = fusion.clone()
-        observation = cloned_env.step(action)
-        cloned_fusion.update(observation)
+        decisions_before = len(cloned_fusion.decisions)
+        frames_per_action = int(cloned_env.cfg["environment"].get("frames_per_action", 1))
+        observations = cloned_env.step_sequence(action, frames_per_action)
+        for observation in observations:
+            cloned_fusion.update(observation)
         metrics = evaluator.evaluate(cloned_fusion.points)
+        if target_points is not None:
+            metrics["target_recall@5"] = evaluator.recall_subset(
+                cloned_fusion.points, target_points, 0.005
+            )
+            metrics["gain_target_recall@5"] = float(
+                metrics["target_recall@5"] - current_metrics["target_recall@5"]
+            )
         outcomes[action] = dict(metrics)
         outcomes[action]["gain_f@5"] = float(metrics["f@5"] - current_metrics["f@5"])
         outcomes[action]["gain_surface_coverage"] = float(
             metrics["surface_coverage"] - current_metrics["surface_coverage"]
+        )
+        new_decisions = cloned_fusion.decisions[decisions_before:]
+        outcomes[action]["trajectory_metadata"] = dict(
+            cloned_env.last_trajectory_metadata
+        )
+        outcomes[action]["acquired_frames"] = int(len(observations))
+        outcomes[action]["accepted_frames"] = int(
+            sum(bool(item["accepted"]) for item in new_decisions)
         )
     return outcomes
 
@@ -94,8 +122,24 @@ def _planner_quality(action_scores, counterfactual, selected_action):
         "oracle_action_accuracy": float(selected_index == oracle_index),
         "oracle_action": ACTIONS[oracle_index],
         "selected_gain_f@5": float(gains[selected_index]),
+        "selected_gain_surface_coverage": float(
+            counterfactual[selected_action]["gain_surface_coverage"]
+        ),
+        "oracle_regret_surface_coverage": float(
+            max(counterfactual[action]["gain_surface_coverage"] for action in ACTIONS)
+            - counterfactual[selected_action]["gain_surface_coverage"]
+        ),
         "action_scores": action_scores,
     }
+
+
+def _evaluate_state(evaluator, fused_points, target_points=None):
+    metrics = evaluator.evaluate(fused_points)
+    if target_points is not None:
+        metrics["target_recall@5"] = evaluator.recall_subset(
+            fused_points, target_points, 0.005
+        )
+    return metrics
 
 
 def run_episode(
@@ -140,6 +184,34 @@ def run_episode(
         fusion.update(observation)
     current_observation = bootstrap[0]
     evaluator = ReconstructionEvaluator(mesh, episode_cfg, seed=initial_pose_seed)
+    target_mode = str(episode_cfg["evaluation"].get("target_surface_mode", "none"))
+    target_points = None
+    if target_mode == "removed_observation":
+        removed = [
+            observation.target_points_object
+            for observation in bootstrap
+            if observation.target_points_object is not None
+            and len(observation.target_points_object)
+        ]
+        target_points = (
+            np.concatenate(removed, axis=0).astype(np.float32)
+            if removed
+            else np.zeros((0, 3), dtype=np.float32)
+        )
+        if len(target_points) and len(fusion.points):
+            initial_distances = cKDTree(fusion.points).query(
+                target_points, k=1, workers=-1
+            )[0]
+            target_points = target_points[
+                (initial_distances > 0.005) & (initial_distances <= 0.010)
+            ]
+    elif target_mode == "initial_unseen":
+        distances = evaluator.distances_from_gt(fusion.points)
+        target_points = evaluator.gt_points[distances > 0.005].copy()
+    elif target_mode != "none":
+        raise ValueError("Unknown evaluation.target_surface_mode: %s" % target_mode)
+    if target_points is not None:
+        np.save(str(episode_dir / "target_surface_points.npy"), target_points)
     planner = make_planner(planner_name, episode_cfg)
     planner.reset(current_observation, fusion)
 
@@ -149,9 +221,11 @@ def run_episode(
     planner_metrics = []
     runtime_metrics = []
     action_history = []
+    fault_events = []
+    action_trajectory_events = []
 
     for step in range(total_steps):
-        metrics = evaluator.evaluate(fusion.points)
+        metrics = _evaluate_state(evaluator, fusion.points, target_points)
         reconstruction_metrics.append(metrics)
         planning_start = time.perf_counter()
         if planner_name == "fixed":
@@ -168,7 +242,11 @@ def run_episode(
         planning_wall = time.perf_counter() - planning_start
         assignments = candidate_action_assignments(candidates, current_observation.executed_pose, env.angles_deg)
         action_scores = _action_scores(scores, assignments)
-        counterfactual = _counterfactual(env, fusion, evaluator, metrics) if cfg["experiment"].get("counterfactual", True) else {}
+        counterfactual = (
+            _counterfactual(env, fusion, evaluator, metrics, target_points)
+            if cfg["experiment"].get("counterfactual", True)
+            else {}
+        )
         quality = _planner_quality(action_scores, counterfactual, selected_action) if counterfactual else {
             "score_gain_spearman": float("nan"),
             "oracle_regret_f@5": float("nan"),
@@ -203,16 +281,45 @@ def run_episode(
             save_images=bool(cfg["experiment"].get("save_images", True)),
         )
 
-        generated_observations = [env.step(selected_action)]
         frames_per_action = int(episode_cfg["environment"].get("frames_per_action", 1))
-        for _ in range(1, frames_per_action):
-            generated_observations.append(env.render())
+        decisions_before = len(fusion.decisions)
+        generated_observations = env.step_sequence(selected_action, frames_per_action)
         for generated in generated_observations:
-            fusion.update(generated)
-        current_observation = fusion.observations[-1] if fusion.observations else generated_observations[-1]
+            inserted_points = fusion.update(generated)
+            if generated.fault_tags:
+                event = {
+                    "step": int(generated.step),
+                    "fault_tags": list(generated.fault_tags),
+                    "inserted_points": int(len(inserted_points)),
+                    "pose_error_deg": float(generated.pose_error_deg),
+                    "translation_error_m": float(generated.translation_error_m),
+                    "visibility_ratio": float(generated.visibility_ratio),
+                }
+                if "scheduled_pose_outlier" in generated.fault_tags and len(inserted_points):
+                    distances = evaluator.distances_to_gt(inserted_points)
+                    event["ghost_points"] = int(np.sum(distances > 0.005))
+                    event["ghost_ratio"] = float(np.mean(distances > 0.005))
+                fault_events.append(event)
+        if env.last_trajectory_metadata:
+            trajectory_event = dict(env.last_trajectory_metadata)
+            new_decisions = fusion.decisions[decisions_before:]
+            trajectory_event.update({
+                "decision_step": int(step),
+                "selected_action": selected_action,
+                "accepted_frames": int(
+                    sum(bool(item["accepted"]) for item in new_decisions)
+                ),
+                "rejected_frames": int(
+                    sum(not bool(item["accepted"]) for item in new_decisions)
+                ),
+            })
+            action_trajectory_events.append(trajectory_event)
+        # Filtering decides whether a frame enters reconstruction, not whether
+        # its latest tracking pose is available to the action mapper.
+        current_observation = generated_observations[-1]
         planner.update(current_observation, fusion)
 
-    final_metrics = evaluator.evaluate(fusion.points)
+    final_metrics = _evaluate_state(evaluator, fusion.points, target_points)
     reconstruction_metrics.append(final_metrics)
     save_step(
         episode_dir / ("step_%03d" % total_steps),
@@ -229,6 +336,11 @@ def run_episode(
     f_values = [item["f@5"] for item in reconstruction_metrics]
     recall_values = [item["recall@5"] for item in reconstruction_metrics]
     coverage_values = [item["surface_coverage"] for item in reconstruction_metrics]
+    target_values = (
+        [item["target_recall@5"] for item in reconstruction_metrics]
+        if target_points is not None
+        else []
+    )
     correlations = [item["score_gain_spearman"] for item in planner_metrics]
     regrets = [item["oracle_regret_f@5"] for item in planner_metrics]
     accuracies = [item["oracle_action_accuracy"] for item in planner_metrics]
@@ -243,6 +355,10 @@ def run_episode(
         "f@5_auc": trapezoid_auc(f_values),
         "recall@5_auc": trapezoid_auc(recall_values),
         "surface_coverage_auc": trapezoid_auc(coverage_values),
+        "target_surface_mode": target_mode,
+        "target_surface_point_count": int(len(target_points)) if target_points is not None else 0,
+        "target_recall@5_auc": trapezoid_auc(target_values) if target_values else float("nan"),
+        "final_target_recall@5": float(target_values[-1]) if target_values else float("nan"),
         "final_f@5": float(f_values[-1]),
         "final_recall@5": float(recall_values[-1]),
         "final_chamfer_m": float(final_metrics["chamfer_m"]),
@@ -258,6 +374,8 @@ def run_episode(
         "reconstruction_metrics": reconstruction_metrics,
         "planner_metrics": planner_metrics,
         "runtime_metrics": runtime_metrics,
+        "fault_events": fault_events,
+        "action_trajectory_events": action_trajectory_events,
     }
     write_json(episode_dir / "keyframe_decisions.json", {"decisions": fusion.decisions})
     write_json(summary_path, summary)

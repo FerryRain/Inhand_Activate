@@ -6,7 +6,7 @@ This folder implements the fixed-camera, kinematic planner benchmark specified f
 
 The minimal kinematic environment uses deterministic Open3D CPU ray casting. It has the fixed-camera and direct-pose-update semantics required by the protocol. The renderer is isolated in `benchmark/environment.py`; planner, fusion, action mapping, evaluator, counterfactual rollout, and output formats do not depend on the renderer.
 
-Final timing uses the isolated `robosyn_gpu` environment on an RTX 4090 D. Ray-GPIS's GPyTorch exact GP and ActNeRF's radiance-field ensemble run on CUDA; Fixed and PB-NBV are native CPU planners measured on the same machine. Timers call `torch.cuda.synchronize()` at representation-update and candidate-scoring boundaries. The exact stack is stored in `results/formal_120_sixview_gpu/gpu_environment.json`.
+Final timing uses the isolated `robosyn_gpu` environment on an RTX 4090 D. Ray-GPIS's GPyTorch exact GP, adapted ER-GPIS, and ActNeRF's radiance-field ensemble run on CUDA; Fixed, Pose-Novelty, and PB-NBV are native CPU planners measured on the same machine. Timers call `torch.cuda.synchronize()` at representation-update and candidate-scoring boundaries. The exact stack is stored in each formal result root's `gpu_environment.json`.
 
 The ActNeRF adapter uses an object-centric NeRF ensemble with volume rendering, different Xavier initializations, warm starts, segmented RGB supervision, mean-opacity ROI filtering, and ensemble RGB variance. The formal config uses five compact PyTorch radiance fields. This preserves the core ActNeRF planner criterion but is not the original Instant-NGP implementation.
 
@@ -34,13 +34,15 @@ Setup and unit tests can run in `robosyn`; final GPU baselines use `robosyn_gpu`
 conda run -n robosyn python rebuttal/prepare_assets.py --config rebuttal/configs/base.yaml
 conda run -n robosyn python -m unittest discover -s rebuttal/tests -v
 
-# Final strict-six-image suite: 120 paired scenes, 720 stored runs.
-# Fixed/PB-NBV/Ray-GPIS use one run per scene; ActNeRF uses three seeds.
+# Final strict-six-image suite: 120 paired scenes, 960 stored runs.
+# Fixed/Pose/PB/ER/Ray use one run per scene; ActNeRF uses three seeds.
 conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
 
 conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml --overwrite
+conda run -n robosyn_gpu python rebuttal/evaluate_pose_viewpoint_coverage.py \
+  --config rebuttal/configs/formal_120_sixview_gpu.yaml
 conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
 conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
@@ -53,28 +55,123 @@ conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
 # Clean component ablations
 conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
   --config rebuttal/configs/ablation.yaml
+conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+  --config rebuttal/configs/ablation.yaml --overwrite
+conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+  --config rebuttal/configs/ablation.yaml
+conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+  --config rebuttal/configs/ablation.yaml
+conda run -n robosyn_gpu python rebuttal/validate_results.py \
+  --config rebuttal/configs/ablation.yaml
+conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
+  --config rebuttal/configs/ablation.yaml
+conda run -n robosyn_gpu python rebuttal/validate_ablation_consistency.py
+
+# Strict-six-image component ablations under moderate empirical/noise corruption
+conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+  --config rebuttal/configs/ablation_realistic.yaml
+conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+  --config rebuttal/configs/ablation_realistic.yaml --overwrite
+conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+  --config rebuttal/configs/ablation_realistic.yaml
+conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+  --config rebuttal/configs/ablation_realistic.yaml
+conda run -n robosyn_gpu python rebuttal/summarize_noise_exposure.py \
+  --config rebuttal/configs/ablation_realistic.yaml
+conda run -n robosyn_gpu python rebuttal/validate_results.py \
+  --config rebuttal/configs/ablation_realistic.yaml
+conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
+  --config rebuttal/configs/ablation_realistic.yaml
+
+# Persistent action-mismatch stress: under-rotation/stall and grip slip.
+# The first sweep directly compares Pose-Novelty and Full Ray-GPIS; the
+# second uses the identical stress schedule for all five Ray-GPIS variants.
+conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
+  --config rebuttal/configs/baseline_slip_pose_ray.yaml
+conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+  --config rebuttal/configs/ablation_slip_robustness.yaml
+
+for config in baseline_slip_pose_ray ablation_slip_robustness; do
+  conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+    --config rebuttal/configs/${config}.yaml --overwrite
+  conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+    --config rebuttal/configs/${config}.yaml
+  conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+    --config rebuttal/configs/${config}.yaml
+  conda run -n robosyn_gpu python rebuttal/summarize_action_mismatch.py \
+    --config rebuttal/configs/${config}.yaml
+done
+
+# Fresh-seed special-case active stress ablations
+for name in sparse ghost hole; do
+  conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+    --config rebuttal/configs/stress_${name}.yaml
+  conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+    --config rebuttal/configs/stress_${name}.yaml
+  conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+    --config rebuttal/configs/stress_${name}.yaml
+done
+
+# Shared reference trajectories and Full/Pointwise pose-stability diagnostic
+conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+  --config rebuttal/configs/stress_pose_reference.yaml
+conda run --no-capture-output -n robosyn_gpu python \
+  rebuttal/evaluate_pose_stability.py --repeats 20
+conda run -n robosyn_gpu python rebuttal/summarize_stress_ablation.py
+
+# Visited-view local depth-registration gap: Pose/Hit/Full and exhaustive
+# five-variant component rerun under identical shared action branches.
+conda run --no-capture-output -n robosyn_gpu python \
+  rebuttal/run_continuous_one_step.py \
+  --config rebuttal/configs/visited_registration_gap.yaml
+conda run --no-capture-output -n robosyn_gpu python \
+  rebuttal/run_continuous_one_step.py \
+  --config rebuttal/configs/visited_registration_gap_ablation.yaml
+conda run -n robosyn_gpu python rebuttal/summarize_visited_gap.py
+
+# ER-GPIS versus Ray-GPIS on the identical visited-view gap scenes.
+conda run --no-capture-output -n robosyn_gpu python \
+  rebuttal/run_continuous_one_step.py \
+  --config rebuttal/configs/visited_registration_gap_er_ray.yaml
+conda run -n robosyn_gpu python rebuttal/summarize_er_gap.py
 
 # PB-NBV scale/partition sanity check
 conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
   --config rebuttal/configs/pb_sanity_120_gpu.yaml
 
-# Level-B filtering robustness
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_robustness.py \
-  --config rebuttal/configs/robustness.yaml
-conda run -n robosyn_gpu python rebuttal/summarize_robustness.py \
-  --config rebuttal/configs/robustness.yaml
 ```
 
-## Completed formal baseline results
+## Completed formal results
 
-The final 120-pair strict-six-image GPU suite is complete and validated. The main table, complete
+The final 120-pair strict-six-image GPU suite is complete and validated for
+Fixed, Pose-Novelty, adapted PB-NBV, adapted ER-GPIS, Ray-GPIS, and adapted
+ActNeRF. The main table, complete
 categorized metric summary, paired statistics, per-object table, and plots are
 under `results/formal_120_sixview_gpu/`; see `RESULTS.md` and
 `results/formal_120_sixview_gpu/all_metrics_summary.md`. The retained
 `results/pb_sanity_120_gpu/` directory contains the reportable PB-NBV
 scale/partition sweep. Preliminary, debug, CPU, and incomplete result trees
-have been removed. Formal ablation and Level-B robustness sweeps have not yet
-been generated.
+have been removed. The 600-run clean component study is complete under
+`results/ablations/`, including visibility coverage, paired statistics, plots,
+GPU/runtime audits, and an exact consistency check against the formal full
+Ray-GPIS arm. The fixed moderate-error component study is also complete under
+`results/ablations_realistic/`. The fresh-seed special-case suite is complete
+under `results/stress_sparse/`, `stress_ghost/`, `stress_hole/`, and
+`stress_pose_stability/`; its joint corrected table is in
+`results/stress_ablation_summary/`.
+The persistent execution-mismatch Pose/Ray comparison is complete under
+`results/baseline_slip_pose_ray/`, and its five-variant component sweep is
+complete under `results/ablation_slip_robustness/`. Both retain the same
+strict-six-image, 120-paired-scene protocol; their complete statistical and
+CUDA audits are stored in the respective result roots.
+The 64-scene visited-view registration-gap comparison and its exhaustive
+same-scene component rerun are complete under
+`results/visited_registration_gap/` and
+`results/visited_registration_gap_ablation/`; paired intervals and audits are
+in `results/visited_registration_gap/visited_gap_summary.md`.
+The same-scene ER-GPIS/Ray-GPIS check is complete under
+`results/visited_registration_gap_er_ray/`; it does not support a Ray-over-ER
+claim and is retained as a negative result rather than used in the rebuttal.
 
 ## Saved episode data
 
@@ -85,4 +182,31 @@ categorized Markdown/CSV tables with 95% confidence intervals. ActNeRF's three
 initialization seeds are averaged inside each `(object, initial pose)` pair
 before method aggregation, so all methods have the same 120 paired units.
 
-The Level-B runner renders five observations per action and supports pose jitter/drift/outliers, action-axis and magnitude errors, mask morphology, and dynamic partial occlusion. The three fusion modes are `all`, `motion_only`, and `full`; the full mode enforces minimum view change, visibility, and injected pose-error thresholds. It additionally reports surface thickness, outlier ratio, accepted/rejected frames, and action switching frequency.
+The realistic environment supports pose jitter/drift/outliers, empirical
+action-axis and magnitude residuals, depth/mask corruption, and dynamic
+palm/finger occlusion. The reportable noisy component study still uses exactly
+one initial image plus five active images; no intermediate video frames enter
+its reconstruction.
+
+The persistent action-mismatch profile additionally models an object that is
+difficult to rotate and can slip inside the grasp. A non-stalled primitive
+reaches 55--85% of its requested angle; a 25% stall event reaches 8--30%.
+Grip slip occurs with 22% probability, adds a 12--30 degree uncommanded
+rotation, and rotates the effective primitive-axis frame by 15--30 degrees for
+all later actions (capped at 50 degrees). These are declared simulation-stress
+parameters, not an empirical fit. Event occurrence is deterministic for each
+object/initial-pose/step and shared by paired planners, while action-dependent
+trajectories are allowed to diverge naturally.
+
+Stress configurations can additionally schedule deterministic step-specific
+pose outliers, correlated depth dropout, and per-step occlusion fractions. The
+reconstruction evaluator supports exact PyTorch3D CUDA nearest-neighbor
+distances, and Ray-GPIS exposes its already-computed hit mask so Hit-only does
+not repeat CPU ray tests.
+
+The visited-view registration-gap stress records a shared prefix pose in pose
+history while removing one deterministic contiguous depth region before
+fusion. The corruption is disabled for the next decision, whose three action
+branches are generated once and shared by every planner. This isolates the
+case in which nominal viewpoint coverage and acquired reconstruction coverage
+disagree.

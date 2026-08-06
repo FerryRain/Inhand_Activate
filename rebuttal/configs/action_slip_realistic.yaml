@@ -1,0 +1,21 @@
+base: ablation_realistic.yaml
+
+# Persistent execution-mismatch stress.  These parameters are a declared
+# simulation stress, not an empirical fit: they model contact-limited progress
+# and loss of the nominal controller/object axis relationship after grip slip.
+environment:
+  stress:
+    name: persistent_action_mismatch
+  robustness:
+    # Even a non-stalled 6 s primitive reaches only 55--85% of its requested
+    # rotation because the object is difficult to turn against hand contact.
+    action_progress_scale_range: [0.55, 0.85]
+    # A stalled primitive makes only 8--30% progress.
+    action_stall_probability: 0.25
+    action_stall_scale_range: [0.08, 0.30]
+    # A slip adds an uncommanded rotation and permanently biases the effective
+    # axes used by all subsequent primitives in the episode.
+    grip_slip_probability: 0.22
+    grip_slip_angle_deg_range: [12.0, 30.0]
+    slip_axis_drift_deg_range: [15.0, 30.0]
+    slip_axis_drift_max_deg: 50.0

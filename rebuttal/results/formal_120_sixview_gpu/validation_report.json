@@ -1,7 +1,7 @@
 {
-  "complete_episodes": 720,
+  "complete_episodes": 960,
   "errors": [],
-  "expected_episodes": 720,
+  "expected_episodes": 960,
   "paired_initial_states": 120,
   "root": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/results/formal_120_sixview_gpu",
   "valid": true

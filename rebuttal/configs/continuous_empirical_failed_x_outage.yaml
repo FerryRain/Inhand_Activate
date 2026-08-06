@@ -1,0 +1,24 @@
+base: continuous_empirical_two_prefix_registration_gap.yaml
+
+# Severe, axis-specific mechanism test. The +z history is acquired normally;
+# the subsequent -x primitive produces a complete depth-registration outage
+# while its tracked-pose trajectory remains available to Pose-Novelty. The
+# evaluated third primitive restores synchronized depth. This tests recovery
+# from "visited in pose space but absent from reconstruction," not average
+# hardware performance.
+environment:
+  shared_prefix_sequences:
+    - [plus_z, minus_x]
+  stress:
+    name: empirical_failed_minus_x_registration_outage
+    registration_failure_probability_schedule:
+      "1": 0.0
+      "2": 1.0
+      "3": 0.0
+    registration_dropout_fraction_schedule:
+      "1": 0.0
+      "2": 1.0
+      "3": 0.0
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_failed_x_outage

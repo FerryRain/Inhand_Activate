@@ -1,0 +1,2 @@
+planner,paired_scenes,final_recall@5,final_recall@5_ci95,final_recall@5_n,final_f@5,final_f@5_ci95,final_f@5_n,final_chamfer_mm,final_chamfer_mm_ci95,final_chamfer_mm_n
+ray_gpis,64,0.9656708333333333,0.019985835949847017,64,0.9805171654229983,0.012141529689898614,64,2.347458279473358,0.15058965365039248,64

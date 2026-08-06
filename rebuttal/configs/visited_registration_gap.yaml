@@ -1,0 +1,44 @@
+base: formal_120_sixview_gpu.yaml
+
+# Mechanism-specific robustness test. A shared prefix view is recorded by the
+# pose tracker, but one contiguous depth region is lost before fusion. The
+# registration fault is transient: all three subsequent action branches use
+# normal depth, so the test measures whether a planner returns useful geometry
+# to a view that pose history alone already considers visited.
+environment:
+  level: realistic
+  bootstrap_offsets_deg: [0.0]
+  frames_per_action: 1
+  trajectory_replay_rate_hz: 1.0
+  shared_prefix_sequences:
+    - [minus_x]
+    - [minus_y]
+    - [plus_z]
+  action_calibration_path: rebuttal/assets/action_calibration.json
+  robustness:
+    action_noise_mode: empirical
+    action_noise_scale: 0.50
+    depth_noise_mm: 1.0
+    pose_jitter_deg: 0.0
+    pose_outlier_probability: 0.0
+    depth_dropout_fraction: 0.0
+    occlusion_fraction: 0.0
+  stress:
+    name: visited_view_registration_gap
+    contiguous_dropout_steps: [1]
+    contiguous_dropout_fraction: 0.70
+
+evaluation:
+  backend: pytorch3d_cuda
+  recovery_target_mode: removed_prefix
+
+fusion:
+  filter_mode: all
+
+experiment:
+  initial_pose_seeds: [15, 16, 17, 18, 19, 20, 21, 22]
+  output_dir: rebuttal/results/visited_registration_gap
+  counterfactual: true
+
+planners:
+  enabled: [pose_novelty, ray_gpis_hit_only, ray_gpis]

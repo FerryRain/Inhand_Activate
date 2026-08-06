@@ -46,10 +46,12 @@ def main():
         "compute_capability": fields[3],
         "timing_protocol": "single-process wall clock with torch.cuda.synchronize at phase boundaries",
         "native_devices": {
-            "ray_gpis": "cuda",
-            "actnerf": "cuda",
-            "pb_nbv": "cpu",
-            "fixed": "cpu",
+            method: (
+                "cuda"
+                if method in ("actnerf", "er_gpis") or method.startswith("ray_gpis")
+                else "cpu"
+            )
+            for method in cfg["planners"]["enabled"]
         },
     }
     root = resolved_path(cfg["experiment"]["output_dir"])

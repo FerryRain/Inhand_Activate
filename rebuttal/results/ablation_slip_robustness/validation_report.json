@@ -1,0 +1,8 @@
+{
+  "complete_episodes": 600,
+  "errors": [],
+  "expected_episodes": 600,
+  "paired_initial_states": 120,
+  "root": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/results/ablation_slip_robustness",
+  "valid": true
+}

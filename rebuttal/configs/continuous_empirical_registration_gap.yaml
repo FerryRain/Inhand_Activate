@@ -1,0 +1,47 @@
+base: continuous_empirical_one_step_prefix.yaml
+
+# Pose/depth-registration mechanism test. During the shared first primitive,
+# RGB-D is fused against a 0.4 s delayed pose plus a fixed 5 deg / 3 mm camera
+# calibration bias. Independently scheduled frames lose 75% of registered
+# depth. Tracking is exact again at the evaluated decision boundary and during
+# all three tested action branches.
+environment:
+  level: realistic
+  recover_tracking_at_decision_boundary: true
+  stress:
+    name: empirical_registration_gap
+    trajectory_pose_lag_frames_schedule:
+      "1": 2
+      "2": 0
+    camera_rotation_bias_deg_schedule:
+      "1": 5.0
+      "2": 0.0
+    camera_translation_bias_mm_schedule:
+      "1": 3.0
+      "2": 0.0
+    registration_failure_probability_schedule:
+      "1": 0.35
+      "2": 0.0
+    registration_dropout_fraction_schedule:
+      "1": 0.75
+      "2": 0.0
+  robustness:
+    pose_jitter_deg: 0.0
+    drift_per_step_deg: 0.0
+    translation_jitter_mm: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.0
+    mask_morphology_px: 0
+    occlusion_fraction: 0.0
+
+fusion:
+  filter_mode: motion_only
+  min_view_change_deg: 8.0
+
+evaluation:
+  one_step_primary_metric: selected_recovery_recall@5
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_registration_gap

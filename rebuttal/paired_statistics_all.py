@@ -23,6 +23,7 @@ METRICS = {
     "score_gain_correlation": 1.0,
     "oracle_regret_f@5": -1.0,
     "oracle_action_accuracy": 1.0,
+    "consecutive_score_map_correlation": 1.0,
     "planning_time_s": -1.0,
 }
 

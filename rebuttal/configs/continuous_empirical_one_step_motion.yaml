@@ -1,0 +1,26 @@
+base: formal_120_sixview_gpu.yaml
+
+# One decision followed by a complete six-second empirical primitive. The
+# sensor trajectory is replayed at 5 Hz, but neither planner may switch axes
+# until the full primitive has ended.
+environment:
+  level: clean
+  action_steps: 1
+  frames_per_action: 30
+  action_trajectory_mode: empirical_replay
+  action_trajectory_path: rebuttal/assets/action_trajectories_6s.json
+  trajectory_replay_rate_hz: 5.0
+  stress:
+    name: empirical_trajectory_replay
+
+fusion:
+  filter_mode: motion_only
+  min_view_change_deg: 8.0
+
+experiment:
+  output_dir: rebuttal/results/continuous_empirical_one_step_motion
+  counterfactual: true
+  save_images: false
+
+planners:
+  enabled: [pose_novelty, ray_gpis]

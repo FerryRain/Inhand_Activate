@@ -1,0 +1,9 @@
+base: visited_registration_gap.yaml
+
+# ER-GPIS and Full Ray-GPIS under the identical visited-view local
+# registration-gap scenes and shared executable action branches.
+experiment:
+  output_dir: rebuttal/results/visited_registration_gap_er_ray
+
+planners:
+  enabled: [er_gpis, ray_gpis]

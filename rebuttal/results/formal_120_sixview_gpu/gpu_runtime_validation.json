@@ -8,11 +8,27 @@
       },
       "invalid_surface_steps": 0
     },
+    "pose_novelty": {
+      "episodes": 120,
+      "planning_steps": 600,
+      "devices": {
+        "cpu": 600
+      },
+      "invalid_surface_steps": 0
+    },
     "pb_nbv": {
       "episodes": 120,
       "planning_steps": 600,
       "devices": {
         "native_cpu": 600
+      },
+      "invalid_surface_steps": 0
+    },
+    "er_gpis": {
+      "episodes": 120,
+      "planning_steps": 600,
+      "devices": {
+        "cuda": 600
       },
       "invalid_surface_steps": 0
     },

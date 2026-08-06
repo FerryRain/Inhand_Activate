@@ -6,16 +6,12 @@ from pathlib import Path
 from typing import Dict
 
 import numpy as np
-import open3d as o3d
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from Active.NBV_gpis_Field import (
-    GPISNBVv3,
-    estimate_hit_depth_scaled,
-)
+from Active.NBV_gpis_Field import GPISNBVv3
 
 from .base import Planner
 
@@ -66,22 +62,7 @@ class RayGPISPlanner(Planner):
         else:
             scores = self.estimator.scores.copy()
         if self.variant == "hit_only":
-            cloud = self.estimator.pcd
-            tree = o3d.geometry.KDTreeFlann(cloud)
-            hit = []
-            for direction in self.estimator.dirs:
-                depth = estimate_hit_depth_scaled(
-                    cloud,
-                    tree,
-                    self.estimator.center,
-                    self.estimator.radius,
-                    direction,
-                    self.estimator.t_max_scale,
-                    self.estimator.ray_step_scale,
-                    self.estimator.hit_eps_world,
-                )
-                hit.append(depth is not None)
-            self._hit_mask = np.asarray(hit, dtype=bool)
+            self._hit_mask = np.asarray(self.estimator._hit_mask, dtype=bool).copy()
             scores[~self._hit_mask] = -np.inf
         self._scores = np.asarray(scores, dtype=np.float32)
         if self.estimator.device == "cuda":
@@ -108,10 +89,17 @@ class RayGPISPlanner(Planner):
 
     def diagnostics(self):
         out = super().diagnostics()
+        selected_index = (
+            int(np.nanargmax(self.last_scores))
+            if self.last_scores is not None and np.any(np.isfinite(self.last_scores))
+            else int(self.estimator.best_idx)
+        )
+        selected_hit = bool(self.estimator._hit_mask[selected_index])
         out.update({
             "variant": self.variant,
             "device": self.estimator.device,
             "hit_ratio": float(self.estimator.get_last_nbv()["hit_ratio"]),
             "train_points": int(min(len(self.estimator.pcd.points), self.estimator.max_train)),
+            "selected_direction_hit": selected_hit,
         })
         return out

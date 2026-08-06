@@ -1,0 +1,11 @@
+first_planner,second_planner,metric,second_minus_first,ci95,valid_pairs
+pose_novelty,ray_gpis,mean_action_so3_error_deg,0.10562346276150002,1.3356410054969365,120
+pose_novelty,ray_gpis,mean_nominal_target_view_error_deg,-1.824699343950904,1.5594324423565091,120
+pose_novelty,ray_gpis,stall_action_rate,0.0,0.0,120
+pose_novelty,ray_gpis,slip_action_rate,0.0,0.0,120
+pose_novelty,ray_gpis,persistent_misalignment_action_rate,0.0,0.0,120
+pose_novelty,ray_gpis,episode_stall_or_slip_rate,0.0,0.0,120
+pose_novelty,ray_gpis,fault_action_gain_f@5,-0.001187673976583873,0.002907827021458996,112
+pose_novelty,ray_gpis,fault_action_regret_f@5,0.0014395977699993535,0.002496224374622956,112
+pose_novelty,ray_gpis,post_fault_next_gain_f@5,-0.001433573892074214,0.003667725206051669,108
+pose_novelty,ray_gpis,post_fault_next_regret_f@5,0.0009662682195728949,0.0021103755642405335,108

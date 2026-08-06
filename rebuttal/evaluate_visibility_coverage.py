@@ -85,6 +85,26 @@ def coverage_curve(cfg, mesh, initial_pose_seed, actions, rays):
     }
 
 
+def coverage_curve_from_gt_poses(mesh, poses_co, rays):
+    """Geometric visibility along the actually executed noisy trajectory."""
+    areas = triangle_areas(mesh)
+    total_area = float(areas.sum())
+    observed = set()
+    curve = []
+    for pose_co in poses_co:
+        observed.update(visible_triangles(mesh, pose_co, rays).tolist())
+        curve.append(float(areas[list(observed)].sum() / total_area) if observed else 0.0)
+    values = np.asarray(curve, dtype=np.float64)
+    return {
+        "definition": "cumulative visible GT triangle area along saved GT poses / total GT mesh area",
+        "coverage_curve": curve,
+        "coverage_auc": float(np.mean(0.5 * (values[:-1] + values[1:]))),
+        "final_coverage": float(values[-1]),
+        "triangle_count": int(len(areas)),
+        "total_surface_area_m2": total_area,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="rebuttal/configs/formal_120_sixview_gpu.yaml")
@@ -119,19 +139,35 @@ def main():
         mesh_path = episode_cfg["episode"]["mesh_path"]
         if mesh_path not in mesh_cache:
             mesh_cache[mesh_path] = load_mesh(mesh_path)
-        key = (
-            mesh_path,
-            int(summary["initial_pose_seed"]),
-            tuple(summary["actions"]),
-        )
-        if key not in result_cache:
-            result_cache[key] = coverage_curve(
-                cfg,
-                mesh_cache[mesh_path],
+        if cfg["environment"].get("level", "clean") == "clean":
+            key = (
+                "nominal",
+                mesh_path,
                 int(summary["initial_pose_seed"]),
-                summary["actions"],
-                rays,
+                tuple(summary["actions"]),
             )
+            if key not in result_cache:
+                result_cache[key] = coverage_curve(
+                    cfg,
+                    mesh_cache[mesh_path],
+                    int(summary["initial_pose_seed"]),
+                    summary["actions"],
+                    rays,
+                )
+        else:
+            poses_co = [
+                np.load(str(summary_path.parent / ("step_%03d" % step) / "gt_pose.npy"))
+                for step in range(len(summary["actions"]) + 1)
+            ]
+            key = (
+                "executed",
+                mesh_path,
+                tuple(np.asarray(poses_co, dtype=np.float64).round(9).ravel()),
+            )
+            if key not in result_cache:
+                result_cache[key] = coverage_curve_from_gt_poses(
+                    mesh_cache[mesh_path], poses_co, rays
+                )
         with output_path.open("w", encoding="utf-8") as handle:
             json.dump(result_cache[key], handle, indent=2)
         completed += 1

@@ -1,0 +1,15 @@
+base: visited_registration_gap.yaml
+
+# All Ray-GPIS component variants under the identical visited-view local
+# registration-gap stress. This is an exhaustive component check, not a
+# parameter sweep; the environment and 64 scene seeds are unchanged.
+experiment:
+  output_dir: rebuttal/results/visited_registration_gap_ablation
+
+planners:
+  enabled:
+    - ray_gpis_novelty_only
+    - ray_gpis_uncertainty_only
+    - ray_gpis_pointwise
+    - ray_gpis_hit_only
+    - ray_gpis

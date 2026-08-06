@@ -35,6 +35,96 @@ class ReconstructionEvaluator:
         ).astype(np.float32)
         self.thresholds = [float(value) for value in cfg["evaluation"]["thresholds_m"]]
         self.gt_tree = cKDTree(self.gt_points)
+        self.backend = str(cfg["evaluation"].get("backend", "scipy_cpu"))
+        self._torch = None
+        self._knn_points = None
+        self._gt_tensor = None
+        if self.backend == "pytorch3d_cuda":
+            import torch
+            from pytorch3d.ops import knn_points
+
+            if not torch.cuda.is_available():
+                raise RuntimeError("evaluation.backend=pytorch3d_cuda requires CUDA")
+            self._torch = torch
+            self._knn_points = knn_points
+            self._gt_tensor = torch.as_tensor(
+                self.gt_points, dtype=torch.float32, device="cuda"
+            )[None]
+
+    def _nearest_distances(self, points: np.ndarray):
+        points = np.asarray(points, dtype=np.float32)
+        if self.backend != "pytorch3d_cuda":
+            fused_tree = cKDTree(points)
+            return (
+                self.gt_tree.query(points, k=1, workers=-1)[0],
+                fused_tree.query(self.gt_points, k=1, workers=-1)[0],
+            )
+        torch = self._torch
+        with torch.no_grad():
+            fused = torch.as_tensor(points, dtype=torch.float32, device="cuda")[None]
+            fused_to_gt = self._knn_points(fused, self._gt_tensor, K=1).dists
+            gt_to_fused = self._knn_points(self._gt_tensor, fused, K=1).dists
+            fused_to_gt = torch.sqrt(torch.clamp_min(fused_to_gt[0, :, 0], 0.0))
+            gt_to_fused = torch.sqrt(torch.clamp_min(gt_to_fused[0, :, 0], 0.0))
+            return (
+                fused_to_gt.detach().cpu().numpy(),
+                gt_to_fused.detach().cpu().numpy(),
+            )
+
+    def distances_to_gt(self, points: np.ndarray) -> np.ndarray:
+        points = np.asarray(points, dtype=np.float32)
+        if not len(points):
+            return np.zeros((0,), dtype=np.float32)
+        if self.backend != "pytorch3d_cuda":
+            return self.gt_tree.query(points, k=1, workers=-1)[0]
+        torch = self._torch
+        with torch.no_grad():
+            values = self._knn_points(
+                torch.as_tensor(points, dtype=torch.float32, device="cuda")[None],
+                self._gt_tensor,
+                K=1,
+            ).dists[0, :, 0]
+            return torch.sqrt(torch.clamp_min(values, 0.0)).detach().cpu().numpy()
+
+    def distances_from_gt(self, points: np.ndarray) -> np.ndarray:
+        points = np.asarray(points, dtype=np.float32)
+        if not len(points):
+            return np.full((len(self.gt_points),), np.inf, dtype=np.float32)
+        if self.backend != "pytorch3d_cuda":
+            return cKDTree(points).query(self.gt_points, k=1, workers=-1)[0]
+        torch = self._torch
+        with torch.no_grad():
+            values = self._knn_points(
+                self._gt_tensor,
+                torch.as_tensor(points, dtype=torch.float32, device="cuda")[None],
+                K=1,
+            ).dists[0, :, 0]
+            return torch.sqrt(torch.clamp_min(values, 0.0)).detach().cpu().numpy()
+
+    def recall_subset(
+        self,
+        fused_points: np.ndarray,
+        target_points: np.ndarray,
+        threshold: float = 0.005,
+    ) -> float:
+        points = np.asarray(fused_points, dtype=np.float32)
+        targets = np.asarray(target_points, dtype=np.float32)
+        if not len(targets):
+            return float("nan")
+        if not len(points):
+            return 0.0
+        if self.backend != "pytorch3d_cuda":
+            distances = cKDTree(points).query(targets, k=1, workers=-1)[0]
+        else:
+            torch = self._torch
+            with torch.no_grad():
+                distances_sq = self._knn_points(
+                    torch.as_tensor(targets, dtype=torch.float32, device="cuda")[None],
+                    torch.as_tensor(points, dtype=torch.float32, device="cuda")[None],
+                    K=1,
+                ).dists[0, :, 0]
+                distances = torch.sqrt(torch.clamp_min(distances_sq, 0.0)).detach().cpu().numpy()
+        return float(np.mean(distances <= float(threshold)))
 
     def evaluate(self, fused_points: np.ndarray) -> Dict[str, float]:
         points = np.asarray(fused_points, dtype=np.float32)
@@ -54,9 +144,7 @@ class ReconstructionEvaluator:
                 })
             metrics["surface_coverage"] = 0.0
             return metrics
-        fused_tree = cKDTree(points)
-        dist_fused_to_gt = self.gt_tree.query(points, k=1, workers=-1)[0]
-        dist_gt_to_fused = fused_tree.query(self.gt_points, k=1, workers=-1)[0]
+        dist_fused_to_gt, dist_gt_to_fused = self._nearest_distances(points)
         metrics = {
             "chamfer_m": float(dist_fused_to_gt.mean() + dist_gt_to_fused.mean()),
             "point_count": int(len(points)),
