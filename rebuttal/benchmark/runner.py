@@ -387,14 +387,30 @@ def prepare_manifest(cfg: Dict) -> Dict[str, str]:
     asset_cfg = cfg["assets"]
     output_dir = resolved_path(asset_cfg["output_dir"])
     manifest_path = output_dir / "manifest.json"
+    manifest = {}
     if manifest_path.exists():
         with manifest_path.open("r", encoding="utf-8") as handle:
-            return json.load(handle)
-    manifest = prepare_assets(
-        output_dir,
-        float(asset_cfg["target_diagonal_m"]),
-        int(asset_cfg["poisson_depth"]),
-    )
+            manifest = json.load(handle)
+    elif not bool(asset_cfg.get("skip_default_prepare", False)):
+        manifest = prepare_assets(
+            output_dir,
+            float(asset_cfg["target_diagonal_m"]),
+            int(asset_cfg["poisson_depth"]),
+        )
+
+    # External metric meshes (e.g. official YCB models) can participate in the
+    # identical renderer/fusion/planner loop without being normalized or
+    # copied into the eight-object rebuttal asset set.
+    for object_name, value in asset_cfg.get("mesh_paths", {}).items():
+        mesh_path = resolved_path(value)
+        if not mesh_path.exists():
+            raise FileNotFoundError("External object mesh not found: %s" % mesh_path)
+        manifest[str(object_name)] = str(mesh_path)
+
+    missing = [name for name in asset_cfg.get("objects", []) if name not in manifest]
+    if missing:
+        raise KeyError("Objects missing from asset manifest: %s" % ", ".join(missing))
+    output_dir.mkdir(parents=True, exist_ok=True)
     write_json(manifest_path, manifest)
     return manifest
 

@@ -141,6 +141,44 @@ class CoreBenchmarkTest(unittest.TestCase):
         expected = action_rotation("minus_y", env.angles_deg) @ initial.gt_pose[:3, :3]
         np.testing.assert_allclose(observations[-1].gt_pose[:3, :3], expected, atol=1e-7)
 
+    def test_continuous_video_sequence_records_rate_and_uses_exact_pose(self):
+        cfg = copy.deepcopy(self.cfg)
+        cfg["environment"].update({
+            "level": "realistic",
+            "action_duration_s": 0.4,
+            "sensor_rate_hz": 5.0,
+            "frames_per_action": 2,
+            "stress": {"name": "continuous_test"},
+        })
+        cfg["environment"]["robustness"].update({
+            "pose_jitter_deg": 0.0,
+            "drift_per_step_deg": 0.0,
+            "translation_jitter_mm": 0.0,
+            "translation_drift_per_step_mm": 0.0,
+            "pose_outlier_probability": 0.0,
+            "occlusion_fraction": 0.25,
+            "occlusion_fraction_std": 0.05,
+            "action_progress_scale_range": [0.7, 0.7],
+            "action_stall_probability": 0.0,
+            "grip_slip_probability": 0.0,
+        })
+        env = KinematicRGBDEnv(cfg, self.manifest["Cube"], seed=2026)
+        env.reset(2)
+        clone = env.clone()
+        observations = env.step_sequence("minus_x", 2)
+        repeated = clone.step_sequence("minus_x", 2)
+        self.assertEqual(len(observations), 2)
+        self.assertEqual(env.last_trajectory_metadata, clone.last_trajectory_metadata)
+        self.assertEqual(env.last_trajectory_metadata["replay_frames"], 2)
+        self.assertEqual(env.last_trajectory_metadata["replay_rate_hz"], 5.0)
+        self.assertEqual(env.last_trajectory_metadata["duration_s"], 0.4)
+        self.assertTrue(env.last_trajectory_metadata["continuous_rendering"])
+        for observation, repeat in zip(observations, repeated):
+            self.assertAlmostEqual(observation.pose_error_deg, 0.0, places=8)
+            self.assertAlmostEqual(observation.translation_error_m, 0.0, places=8)
+            np.testing.assert_array_equal(observation.mask, repeat.mask)
+            np.testing.assert_allclose(observation.depth, repeat.depth)
+
     def test_stall_and_slip_persist_across_future_actions_and_clones(self):
         cfg = copy.deepcopy(self.cfg)
         cfg["environment"]["level"] = "realistic"

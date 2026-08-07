@@ -1,0 +1,23 @@
+[
+  {
+    "method": "aurora_real",
+    "objects": 6,
+    "reconstructed_meshes": 6,
+    "trials": 180,
+    "placement_success": 0.6666666666666666,
+    "placement_success_ci95": [
+      0.3333333333333333,
+      1.0
+    ],
+    "conditional_regrasp_success": 0.7222222222222222,
+    "conditional_regrasp_success_ci95": [
+      0.4166666666666667,
+      0.9722222222222223
+    ],
+    "sequential_success": 0.4166666666666667,
+    "sequential_success_ci95": [
+      0.08333333333333333,
+      0.75
+    ]
+  }
+]

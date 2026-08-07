@@ -1,0 +1,113 @@
+[
+  {
+    "method": "gt",
+    "object": "003_cracker_box",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "004_sugar_box",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "005_tomato_soup_can",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "006_mustard_bottle",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "007_tuna_fish_can",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "008_pudding_box",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "009_gelatin_box",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "010_potted_meat_can",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.9,
+    "sequential_success": 0.9,
+    "failure_reasons": {
+      "not_antipodal": 1,
+      "success": 9
+    }
+  },
+  {
+    "method": "gt",
+    "object": "021_bleach_cleanser",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  },
+  {
+    "method": "gt",
+    "object": "025_mug",
+    "trials": 10,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 10
+    }
+  }
+]

@@ -1,0 +1,70 @@
+[
+  {
+    "method": "aurora_real",
+    "object": "Big_Cylinder",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_gt_contact": 30
+    }
+  },
+  {
+    "method": "aurora_real",
+    "object": "cube_obj_01",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 30
+    }
+  },
+  {
+    "method": "aurora_real",
+    "object": "cube_obj_02",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.8333333333333334,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "aurora_real",
+    "object": "cube_purple",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.5,
+    "sequential_success": 0.5,
+    "failure_reasons": {
+      "no_gt_contact": 1,
+      "not_antipodal": 14,
+      "success": 15
+    }
+  },
+  {
+    "method": "aurora_real",
+    "object": "green_Pepper",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "aurora_real",
+    "object": "tetraprism",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 30
+    }
+  }
+]

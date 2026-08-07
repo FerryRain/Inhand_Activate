@@ -1,0 +1,63 @@
+base: formal_120_sixview_gpu.yaml
+
+# AURORA-style closed-loop video protocol for the two added challenging
+# objects. The fixed camera renders throughout each complete 6 s primitive at
+# 15 FPS. Fusion/keyframe filtering runs on all 90 frames, while Ray-GPIS
+# replans only at the primitive boundary. Tracking inference is omitted in
+# simulation: the exact executed pose is supplied after action mismatch.
+environment:
+  level: realistic
+  action_steps: 5
+  action_duration_s: 6.0
+  sensor_rate_hz: 15.0
+  frames_per_action: 90
+  stress:
+    name: continuous_hand_contact
+  robustness:
+    # Tracking is deliberately exact; this experiment isolates acquisition
+    # and contact-execution failures rather than tracker performance.
+    pose_jitter_deg: 0.0
+    drift_per_step_deg: 0.0
+    translation_jitter_mm: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    pose_outlier_deg: 0.0
+    translation_outlier_mm: 0.0
+
+    # RGB-D sensing and dynamic palm/two-finger occlusion.
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.03
+    mask_morphology_px: 2
+    occlusion_fraction: 0.25
+    occlusion_fraction_std: 0.10
+    occlusion_outlier_probability: 0.08
+    occlusion_outlier_fraction: 0.30
+
+    # Reuse the predeclared persistent contact-mismatch stress: incomplete
+    # progress models a difficult-to-turn object; stall models failure to reach
+    # the requested view; slip adds uncommanded motion and persistently biases
+    # later primitive axes. These are declared stresses, not a hardware fit.
+    action_progress_scale_range: [0.55, 0.85]
+    action_stall_probability: 0.25
+    action_stall_scale_range: [0.08, 0.30]
+    grip_slip_probability: 0.22
+    grip_slip_angle_deg_range: [12.0, 30.0]
+    slip_axis_drift_deg_range: [15.0, 30.0]
+    slip_axis_drift_max_deg: 50.0
+
+fusion:
+  filter_mode: full
+  min_view_change_deg: 8.0
+  min_visibility_ratio: 0.40
+  max_pose_error_deg: 1.0
+  max_translation_error_m: 0.001
+
+experiment:
+  output_dir: rebuttal/results/diversity_continuous_realistic
+  # The requested endpoint is reconstruction quality; disabling three-action
+  # counterfactual rollouts avoids rendering another 270 frames per decision.
+  counterfactual: false
+  save_images: true
+
+planners:
+  enabled: [ray_gpis]

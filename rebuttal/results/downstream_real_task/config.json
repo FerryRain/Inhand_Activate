@@ -1,0 +1,18 @@
+{
+  "mesh_root": "rebuttal/results/downstream_real_meshes",
+  "gt_root": "reconstruction/offline/GT_data",
+  "dataset": "real",
+  "methods": "aurora_real",
+  "trials_per_mesh": 30,
+  "placement_tilt_std_deg": 2.5,
+  "placement_tilt_clip_deg": 7.0,
+  "grasp_translation_std_mm": 1.5,
+  "grasp_yaw_std_deg": 1.5,
+  "output": "rebuttal/results/downstream_real_task",
+  "mesh_root_resolved": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/results/downstream_real_meshes",
+  "gt_root_resolved": "/home/ferry/data/Code2/Research/Inhand_Activate/reconstruction/offline/GT_data",
+  "methods_resolved": [
+    "aurora_real"
+  ],
+  "randomization": "deterministic trial_seed=100000*reconstruction_seed+local_trial"
+}

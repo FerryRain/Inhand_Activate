@@ -1,0 +1,2 @@
+method,objects,reconstructed_meshes,trials,placement_success,placement_success_ci95,conditional_regrasp_success,conditional_regrasp_success_ci95,sequential_success,sequential_success_ci95
+aurora_real,6,6,180,0.6666666666666666,"[0.3333333333333333, 1.0]",0.7222222222222222,"[0.4166666666666667, 0.9722222222222223]",0.4166666666666667,"[0.08333333333333333, 0.75]"

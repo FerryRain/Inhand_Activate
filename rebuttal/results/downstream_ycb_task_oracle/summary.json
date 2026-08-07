@@ -1,0 +1,23 @@
+[
+  {
+    "method": "gt",
+    "objects": 10,
+    "reconstructed_meshes": 10,
+    "trials": 100,
+    "placement_success": 1.0,
+    "placement_success_ci95": [
+      1.0,
+      1.0
+    ],
+    "conditional_regrasp_success": 0.99,
+    "conditional_regrasp_success_ci95": [
+      0.97,
+      1.0
+    ],
+    "sequential_success": 0.99,
+    "sequential_success_ci95": [
+      0.97,
+      1.0
+    ]
+  }
+]

@@ -511,14 +511,33 @@ class KinematicRGBDEnv:
         frames = int(max(1, frames))
         if frames == 1:
             return [self.step(action)]
+        duration_s = float(self.cfg["environment"].get("action_duration_s", 0.0))
+        sensor_rate_hz = float(self.cfg["environment"].get("sensor_rate_hz", 0.0))
+        if duration_s > 0.0 and sensor_rate_hz > 0.0:
+            expected_frames = int(round(duration_s * sensor_rate_hz))
+            if frames != expected_frames:
+                raise ValueError(
+                    "frames_per_action=%d, but action_duration_s * sensor_rate_hz=%d"
+                    % (frames, expected_frames)
+                )
         action_rotation_matrix = self._begin_action(action)
         action_rotvec = Rotation.from_matrix(action_rotation_matrix).as_rotvec()
         increment = Rotation.from_rotvec(action_rotvec / float(frames)).as_matrix()
         observations = []
-        for _ in range(frames):
+        for frame_index in range(1, frames + 1):
             self.gt_pose_co[:3, :3] = increment @ self.gt_pose_co[:3, :3]
             self.pose_co = self.gt_pose_co.copy()
-            observations.append(self.render())
+            observations.append(self.render(substep_override=frame_index))
+        self.last_trajectory_metadata = {
+            "action": action,
+            "duration_s": duration_s,
+            "replay_rate_hz": sensor_rate_hz,
+            "replay_frames": frames,
+            "endpoint_angle_deg": float(np.degrees(np.linalg.norm(action_rotvec))),
+            "progress_scale": float(self.last_action_progress_scale),
+            "fault_tags": list(self.last_action_fault_tags),
+            "continuous_rendering": True,
+        }
         return observations
 
     def _step_empirical_trajectory(self, action: str) -> List[Observation]:

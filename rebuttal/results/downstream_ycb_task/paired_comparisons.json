@@ -1,0 +1,254 @@
+[
+  {
+    "reference": "ray_gpis",
+    "comparator": "actnerf",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.01666666666666667,
+    "difference_ci95": [
+      -0.07666666666666666,
+      0.11333333333333333
+    ],
+    "wilcoxon_p": 0.5929800980174267
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "actnerf",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": 0.056666666666666664,
+    "difference_ci95": [
+      -0.10333333333333332,
+      0.21333333333333332
+    ],
+    "wilcoxon_p": 0.32460611172618203
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "actnerf",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.03333333333333333,
+    "difference_ci95": [
+      -0.10666666666666666,
+      0.16666666666666666
+    ],
+    "wilcoxon_p": 0.6082209420702409
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "fixed",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.07666666666666667,
+    "difference_ci95": [
+      -0.1433333333333333,
+      0.25666666666666665
+    ],
+    "wilcoxon_p": 0.47278308612015796
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "fixed",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": 0.33666666666666667,
+    "difference_ci95": [
+      0.16999999999999998,
+      0.5066666666666666
+    ],
+    "wilcoxon_p": 0.011718685599768628
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "fixed",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.21000000000000002,
+    "difference_ci95": [
+      0.010000000000000004,
+      0.42000000000000004
+    ],
+    "wilcoxon_p": 0.10349069663839121
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "pb_nbv",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.1433333333333333,
+    "difference_ci95": [
+      -0.07008333333333332,
+      0.36
+    ],
+    "wilcoxon_p": 0.2710916369317352
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "pb_nbv",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": 0.3766666666666666,
+    "difference_ci95": [
+      0.22666666666666666,
+      0.5266666666666666
+    ],
+    "wilcoxon_p": 0.007685794055213263
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "pb_nbv",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.21999999999999997,
+    "difference_ci95": [
+      0.0033333333333333327,
+      0.4134166666666655
+    ],
+    "wilcoxon_p": 0.12122509284396658
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "pose_novelty",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.01,
+    "difference_ci95": [
+      -0.08666666666666667,
+      0.1
+    ],
+    "wilcoxon_p": 1.0
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "pose_novelty",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": -0.016666666666666666,
+    "difference_ci95": [
+      -0.08333333333333333,
+      0.04
+    ],
+    "wilcoxon_p": 0.6698153575994166
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "pose_novelty",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.0033333333333333375,
+    "difference_ci95": [
+      -0.09333333333333332,
+      0.09
+    ],
+    "wilcoxon_p": 0.8648125041589424
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "single_view_depth",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.18,
+    "difference_ci95": [
+      0.06,
+      0.32666666666666666
+    ],
+    "wilcoxon_p": 0.039359508888249725
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "single_view_depth",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": 0.5766666666666667,
+    "difference_ci95": [
+      0.37666666666666665,
+      0.7733333333333333
+    ],
+    "wilcoxon_p": 0.007632441648205508
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "single_view_depth",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.3833333333333333,
+    "difference_ci95": [
+      0.21333333333333332,
+      0.5733333333333333
+    ],
+    "wilcoxon_p": 0.01151382807684542
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "spar3d",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.27666666666666667,
+    "difference_ci95": [
+      0.1633333333333333,
+      0.39666666666666667
+    ],
+    "wilcoxon_p": 0.009747807101173898
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "spar3d",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": 0.6266666666666667,
+    "difference_ci95": [
+      0.4366666666666667,
+      0.7934166666666654
+    ],
+    "wilcoxon_p": 0.007685794055213263
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "spar3d",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.4,
+    "difference_ci95": [
+      0.19666666666666668,
+      0.6033333333333333
+    ],
+    "wilcoxon_p": 0.01151382807684542
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "trellis2",
+    "metric": "placement_success",
+    "paired_objects": 10,
+    "difference": 0.37999999999999995,
+    "difference_ci95": [
+      0.19333333333333333,
+      0.5333333333333334
+    ],
+    "wilcoxon_p": 0.009909578846375406
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "trellis2",
+    "metric": "conditional_regrasp_success",
+    "paired_objects": 10,
+    "difference": 0.7,
+    "difference_ci95": [
+      0.5032499999999999,
+      0.8700000000000001
+    ],
+    "wilcoxon_p": 0.007526315166457887
+  },
+  {
+    "reference": "ray_gpis",
+    "comparator": "trellis2",
+    "metric": "sequential_success",
+    "paired_objects": 10,
+    "difference": 0.45,
+    "difference_ci95": [
+      0.26,
+      0.6433333333333333
+    ],
+    "wilcoxon_p": 0.01151382807684542
+  }
+]

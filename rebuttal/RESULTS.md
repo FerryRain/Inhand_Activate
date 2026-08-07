@@ -42,6 +42,16 @@ Fixed are native CPU planners measured on the same machine. Ray-GPIS uses GPyTor
 averages 0.261 s per planning step (0.261 s representation update and 0.000072
 s candidate lookup), versus 2.238 s for adapted ActNeRF.
 
+The separate online-pipeline audit uses 120 real 1280 x 720 keyframes and
+eight real deployment sequences. Synchronized SAM2.1 Hiera Tiny segmentation
+is 14.5+-0.2 ms/frame on the RTX 4090 D. The recorded end-to-end online
+perception/BundleTrack call is 242.9+-47.9 ms/frame over 2,041 calls and
+already includes segmentation. Point-cloud fusion is 1,649.6+-194.0 ms/update
+over 36 active updates, and NBV-to-action mapping is 2.42 ms/update. Model
+loading, visualization, disk export, and the 6 s manipulation primitive are
+excluded. Raw samples and source-sequence summaries are under
+`results/pipeline_runtime/`.
+
 PB-NBV sensitivity confirms that the main result uses its strongest tested
 configuration: F@5 AUC is 0.6939 for d/30, 0.7212 for d/50, 0.7475 for d/70,
 and 0.6863 for d/50 without partition.
@@ -300,3 +310,70 @@ outage is also inconclusive: Ray-minus-Pose selected F gain is -0.00253 with
 95% CI [-0.01412, 0.00975]. Ray's supported advantage appears in the precise
 case where viewpoint history and acquired geometry disagree: the visited-view
 local depth gap above. This is the claim used in the rebuttal.
+
+## Continuous 6-second diversity stress test
+
+We additionally evaluate Full Ray-GPIS on the concave Bowl and
+Thin-Irregular objects using the original AURORA timing. Each of 30 episodes
+(15 initial poses per object) contains one initial observation and five full
+6-second rotation primitives. A fixed camera renders RGB-D at 15 FPS, giving
+90 frames per action and 450 action frames per episode. Every frame passes
+through the AURORA keyframe filter and fusion backend; active replanning occurs
+only after each 6-second primitive. Because this is simulation, the exact
+executed pose is supplied instead of running the tracking network.
+
+The stress model includes dynamic palm/two-finger occlusion, depth and mask
+corruption, systematic under-rotation, action stalls, grip slip, and persistent
+post-slip axis drift.
+
+| Object | Episodes | F@5 AUC | Final F@5 | Final Recall@5 | Chamfer (mm) |
+|---|---:|---:|---:|---:|---:|
+| Bowl | 15 | 0.6402+-0.0534 | 0.8107+-0.0695 | 0.6992+-0.0831 | 4.758+-0.967 |
+| Thin-Irregular | 15 | 0.7046+-0.0306 | 0.9274+-0.0219 | 0.8673+-0.0360 | 3.579+-0.602 |
+| Combined | 30 | 0.6724+-0.0324 | 0.8690+-0.0416 | 0.7832+-0.0540 | 4.168+-0.599 |
+
+Values are episode means with 95% confidence intervals. The realized stall
+and slip rates are 28.7% and 18.7%, respectively. All 30 episodes contain
+exactly 451 keyframe decisions (the initial frame plus 450 action frames) and
+six action-boundary reconstruction states. All 150 Ray-GPIS planning steps
+run on CUDA and produce finite 256-direction score maps. Full numerical and
+per-episode results are in `results/diversity_continuous_realistic/`; the mesh
+figure intentionally uses the lowest-Chamfer successful episode of each object
+for qualitative visualization and is not the source of the reported means.
+
+## Sequential quasi-static place-and-regrasp task
+
+Ten metric YCB objects are reconstructed from three paired initial poses. Each
+reconstruction is evaluated under ten deterministic placement/grasp execution
+perturbations, giving 30 trials/object/method. The task planner sees only the
+predicted mesh; GT is used only to evaluate support stability and antipodal
+contacts. Active acquisition uses five 6-second rotations at 15 FPS with
+dynamic hand occlusion, depth/mask noise, under-rotation, stalls, and grip
+slip. All RGB-D methods use the same GPU NKSR mesh backend; single-image
+SPAR3D/TRELLIS.2 receive clean inputs and oracle isotropic alignment.
+
+| Reconstruction source | Placement | Stage-2 regrasp | Joint |
+|---|---:|---:|---:|
+| Single RGB-D | 39.7% | 20.0% | 6.7% |
+| SPAR3D (oracle-align) | 30.0% | 15.0% | 5.0% |
+| TRELLIS.2 (oracle-align) | 19.7% | 7.7% | 0.0% |
+| Fixed schedule | 50.0% | 44.0% | 24.0% |
+| Adapted PB-NBV | 43.3% | 40.0% | 23.0% |
+| Adapted ActNeRF | 56.0% | 72.0% | 41.7% |
+| Pose-Novelty | 56.7% | **79.3%** | 44.7% |
+| **Full Ray-GPIS** | **57.7%** | 77.7% | **45.0%** |
+| GT mesh oracle | 100.0% | 99.0% | 99.0% |
+
+Ray-GPIS improves placement/stage-2/joint success over Single RGB-D by
+18.0/57.7/38.3 percentage points; the paired object-level Wilcoxon p-values
+are 0.0394/0.0076/0.0115. Versus Fixed, the numerical gains are
+7.7/33.7/21.0 points, with the stage-2 result significant at p=0.0117. The
+aggregate does not distinguish Ray-GPIS from Pose-Novelty, so it is used as
+downstream-utility evidence rather than a universal Ray-over-Pose result.
+
+The six prior real AURORA meshes come only from
+`reconstruction/offline/result/offline_tracking` and are evaluated separately
+against scanner GT over 180 perturbations: 66.7% placement, 72.2% stage-2
+regrasp, and 41.7% joint success. Full outputs and object-cluster bootstrap
+intervals are in `results/downstream_ycb_task/` and
+`results/downstream_real_task/`.

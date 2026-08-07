@@ -1,0 +1,74 @@
+[
+  {
+    "path": "reconstruction/offline/result/online_tracking/cube_obj1/002/green_cube_00_002/timing_stats.json",
+    "tracking_calls": 252,
+    "tracking_ms": 256.048623849878,
+    "fusion_ms": 1964.9996095977258,
+    "fusion_calls": 5,
+    "action_mapping_ms": 4.556675802450627,
+    "action_mapping_calls": 5
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/green_cube_02_000/timing_stats.json",
+    "tracking_calls": 163,
+    "tracking_ms": 238.73002286943282,
+    "fusion_ms": 1327.6993369945558,
+    "fusion_calls": 2,
+    "action_mapping_ms": 0.6214714958332479,
+    "action_mapping_calls": 2
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/green_tetraprism_001/timing_stats.json",
+    "tracking_calls": 295,
+    "tracking_ms": 204.04690142683447,
+    "fusion_ms": 1460.322191187879,
+    "fusion_calls": 5,
+    "action_mapping_ms": 0.5854929971974343,
+    "action_mapping_calls": 5
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/green_tetraprism_002/timing_stats.json",
+    "tracking_calls": 278,
+    "tracking_ms": 216.19452782075354,
+    "fusion_ms": 1797.7097360009793,
+    "fusion_calls": 5,
+    "action_mapping_ms": 0.7985505973920226,
+    "action_mapping_calls": 5
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/purple_cube_01/timing_stats.json",
+    "tracking_calls": 181,
+    "tracking_ms": 407.36594703321816,
+    "fusion_ms": 1877.4684847521712,
+    "fusion_calls": 4,
+    "action_mapping_ms": 0.28057475719833747,
+    "action_mapping_calls": 4
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/yellow_cylinder_001/timing_stats.json",
+    "tracking_calls": 293,
+    "tracking_ms": 204.92303930441514,
+    "fusion_ms": 1711.0508760088123,
+    "fusion_calls": 5,
+    "action_mapping_ms": 11.356974800582975,
+    "action_mapping_calls": 5
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/yellow_cylinder_002/timing_stats.json",
+    "tracking_calls": 280,
+    "tracking_ms": 214.63888972981036,
+    "fusion_ms": 1847.035526408581,
+    "fusion_calls": 5,
+    "action_mapping_ms": 0.6865836097858846,
+    "action_mapping_calls": 5
+  },
+  {
+    "path": "reconstruction/offline/result/online_tracking/yellow_cylinder_small_001/timing_stats.json",
+    "tracking_calls": 299,
+    "tracking_ms": 201.00638816498352,
+    "fusion_ms": 1210.2439221926033,
+    "fusion_calls": 5,
+    "action_mapping_ms": 0.47737518907524645,
+    "action_mapping_calls": 5
+  }
+]

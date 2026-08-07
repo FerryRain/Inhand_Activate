@@ -1,0 +1,18 @@
+{
+  "mesh_root": "rebuttal/results/downstream_ycb_meshes",
+  "gt_root": "rebuttal/assets/ycb/models",
+  "dataset": "ycb",
+  "methods": "gt",
+  "trials_per_mesh": 10,
+  "placement_tilt_std_deg": 2.5,
+  "placement_tilt_clip_deg": 7.0,
+  "grasp_translation_std_mm": 1.5,
+  "grasp_yaw_std_deg": 1.5,
+  "output": "rebuttal/results/downstream_ycb_task_oracle",
+  "mesh_root_resolved": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/results/downstream_ycb_meshes",
+  "gt_root_resolved": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/assets/ycb/models",
+  "methods_resolved": [
+    "gt"
+  ],
+  "randomization": "deterministic trial_seed=100000*reconstruction_seed+local_trial"
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "method": "fixed",
+    "episodes": 30,
+    "f@5_auc": 0.5684487824573522,
+    "f@5_auc_ci95": 0.027917837337372527,
+    "final_f@5": 0.7404465881925477,
+    "final_f@5_ci95": 0.035212995471617804,
+    "planning_time_s": 0.0,
+    "planning_time_s_ci95": 0.0,
+    "accepted_frames": 21.633333333333333,
+    "accepted_frames_ci95": 1.7643337274778002
+  },
+  {
+    "method": "pb_nbv",
+    "episodes": 30,
+    "f@5_auc": 0.5212686886805219,
+    "f@5_auc_ci95": 0.03508766826429744,
+    "final_f@5": 0.6582580937784847,
+    "final_f@5_ci95": 0.03724482852992303,
+    "planning_time_s": 0.7529366559597352,
+    "planning_time_s_ci95": 0.20238992306997203,
+    "accepted_frames": 14.0,
+    "accepted_frames_ci95": 2.649689636997849
+  },
+  {
+    "method": "actnerf",
+    "episodes": 30,
+    "f@5_auc": 0.6787132036267493,
+    "f@5_auc_ci95": 0.03014428443982067,
+    "final_f@5": 0.8465417538065606,
+    "final_f@5_ci95": 0.03619041706661897,
+    "planning_time_s": 7.421864831566588,
+    "planning_time_s_ci95": 0.7553322027429339,
+    "accepted_frames": 26.833333333333332,
+    "accepted_frames_ci95": 2.7495996504123816
+  },
+  {
+    "method": "pose_novelty",
+    "episodes": 30,
+    "f@5_auc": 0.7231275385291339,
+    "f@5_auc_ci95": 0.027136021333364506,
+    "final_f@5": 0.9151640108955494,
+    "final_f@5_ci95": 0.023863690291996396,
+    "planning_time_s": 0.0002860909932011661,
+    "planning_time_s_ci95": 1.737865444515172e-05,
+    "accepted_frames": 31.866666666666667,
+    "accepted_frames_ci95": 1.9929159444607352
+  },
+  {
+    "method": "ray_gpis",
+    "episodes": 30,
+    "f@5_auc": 0.7051516970464591,
+    "f@5_auc_ci95": 0.035414272725891136,
+    "final_f@5": 0.9051625765461959,
+    "final_f@5_ci95": 0.02656858082223018,
+    "planning_time_s": 0.9678705332599203,
+    "planning_time_s_ci95": 0.06097579948014601,
+    "accepted_frames": 30.6,
+    "accepted_frames_ci95": 2.8713878898179366
+  }
+]

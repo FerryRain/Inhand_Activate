@@ -52,6 +52,12 @@ conda run -n robosyn_gpu python rebuttal/validate_results.py \
 conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
 
+# Module-level online runtime audit. This combines synchronized SAM2-tiny
+# inference on 120 real frames with eight saved real-deployment timing logs.
+conda run --no-capture-output -n robosyn_gpu python \
+  rebuttal/benchmark_pipeline_runtime.py \
+  --segmentation-samples 120 --warmup 10
+
 # Clean component ablations
 conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
   --config rebuttal/configs/ablation.yaml
@@ -172,6 +178,18 @@ in `results/visited_registration_gap/visited_gap_summary.md`.
 The same-scene ER-GPIS/Ray-GPIS check is complete under
 `results/visited_registration_gap_er_ray/`; it does not support a Ray-over-ER
 claim and is retained as a negative result rather than used in the rebuttal.
+The online runtime audit is stored under `results/pipeline_runtime/`. It
+contains all 120 synchronized segmentation samples, the eight source-sequence
+summaries, hardware/protocol metadata, and the compact module-level table used
+in the rebuttal.
+The sequential downstream evaluation is complete under
+`results/downstream_ycb_task/`: eight reconstruction sources, 10 YCB objects,
+240 reconstructed meshes, and 2,400 perturbed place-and-regrasp trials. Its
+GT-oracle sanity check is under `results/downstream_ycb_task_oracle/`. The six
+existing real AURORA meshes are sourced exclusively from
+`reconstruction/offline/result/offline_tracking` and evaluated separately
+under `results/downstream_real_task/`. Protocol and method-specific environment
+details are documented in `downstream/README.md`.
 
 ## Saved episode data
 

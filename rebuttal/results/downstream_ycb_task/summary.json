@@ -1,0 +1,170 @@
+[
+  {
+    "method": "actnerf",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.56,
+    "placement_success_ci95": [
+      0.3933333333333333,
+      0.7
+    ],
+    "conditional_regrasp_success": 0.72,
+    "conditional_regrasp_success_ci95": [
+      0.51,
+      0.9000833333333321
+    ],
+    "sequential_success": 0.4166666666666667,
+    "sequential_success_ci95": [
+      0.2566666666666667,
+      0.5666666666666667
+    ]
+  },
+  {
+    "method": "fixed",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.5,
+    "placement_success_ci95": [
+      0.3333333333333333,
+      0.6666666666666667
+    ],
+    "conditional_regrasp_success": 0.44,
+    "conditional_regrasp_success_ci95": [
+      0.2733333333333333,
+      0.6133333333333333
+    ],
+    "sequential_success": 0.24,
+    "sequential_success_ci95": [
+      0.12,
+      0.3666666666666667
+    ]
+  },
+  {
+    "method": "pb_nbv",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.43333333333333335,
+    "placement_success_ci95": [
+      0.2,
+      0.6666666666666666
+    ],
+    "conditional_regrasp_success": 0.4,
+    "conditional_regrasp_success_ci95": [
+      0.21991666666666668,
+      0.5866666666666667
+    ],
+    "sequential_success": 0.23,
+    "sequential_success_ci95": [
+      0.06666666666666667,
+      0.4166666666666667
+    ]
+  },
+  {
+    "method": "pose_novelty",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.5666666666666667,
+    "placement_success_ci95": [
+      0.3333333333333333,
+      0.7666666666666667
+    ],
+    "conditional_regrasp_success": 0.7933333333333333,
+    "conditional_regrasp_success_ci95": [
+      0.5800000000000001,
+      0.9566666666666667
+    ],
+    "sequential_success": 0.44666666666666666,
+    "sequential_success_ci95": [
+      0.21333333333333332,
+      0.6833333333333333
+    ]
+  },
+  {
+    "method": "ray_gpis",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.5766666666666667,
+    "placement_success_ci95": [
+      0.41,
+      0.73
+    ],
+    "conditional_regrasp_success": 0.7766666666666666,
+    "conditional_regrasp_success_ci95": [
+      0.5733333333333334,
+      0.93
+    ],
+    "sequential_success": 0.45,
+    "sequential_success_ci95": [
+      0.25991666666666663,
+      0.65
+    ]
+  },
+  {
+    "method": "single_view_depth",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.39666666666666667,
+    "placement_success_ci95": [
+      0.23325,
+      0.5333333333333334
+    ],
+    "conditional_regrasp_success": 0.2,
+    "conditional_regrasp_success_ci95": [
+      0.04666666666666667,
+      0.36
+    ],
+    "sequential_success": 0.06666666666666667,
+    "sequential_success_ci95": [
+      0.0,
+      0.16666666666666666
+    ]
+  },
+  {
+    "method": "spar3d",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.3,
+    "placement_success_ci95": [
+      0.16666666666666666,
+      0.4333333333333333
+    ],
+    "conditional_regrasp_success": 0.15,
+    "conditional_regrasp_success_ci95": [
+      0.06666666666666667,
+      0.2367499999999988
+    ],
+    "sequential_success": 0.05,
+    "sequential_success_ci95": [
+      0.0,
+      0.10333333333333335
+    ]
+  },
+  {
+    "method": "trellis2",
+    "objects": 10,
+    "reconstructed_meshes": 30,
+    "trials": 300,
+    "placement_success": 0.19666666666666666,
+    "placement_success_ci95": [
+      0.06333333333333332,
+      0.36333333333333334
+    ],
+    "conditional_regrasp_success": 0.07666666666666666,
+    "conditional_regrasp_success_ci95": [
+      0.0,
+      0.18666666666666668
+    ],
+    "sequential_success": 0.0,
+    "sequential_success_ci95": [
+      0.0,
+      0.0
+    ]
+  }
+]

@@ -2,6 +2,9 @@
 
 Only reportable completed experiments are retained here:
 
+- `pipeline_runtime/`: module-level runtime audit using 120 synchronized
+  SAM2-tiny CUDA measurements, 2,041 online tracking calls, 36 fusion updates,
+  and the formal Ray-GPIS GPU timings;
 - `formal_120_sixview_gpu/`: final 120-pair baseline suite and all derived metrics;
 - `pb_sanity_120_gpu/`: final 120-pair PB-NBV scale/partition sweep;
 - `ablations/`: final 120-pair clean component ablations and derived metrics;
@@ -18,6 +21,17 @@ Only reportable completed experiments are retained here:
   the identical visited-view gap scenes;
 - `visited_registration_gap_er_ray/`: same-scene ER-GPIS/Ray-GPIS check,
   retained as a completed negative comparison.
+- `downstream_ycb_reconstruction/`: 150 complete realistic continuous-acquisition
+  episodes for Fixed, Pose-Novelty, PB-NBV, ActNeRF, and Ray-GPIS;
+- `downstream_ycb_meshes/`: 30 paired meshes for each of eight reconstruction
+  sources, plus the GT-oracle inputs;
+- `downstream_ycb_task/`: 2,400 final place-and-regrasp trials, paired tests,
+  configuration, tables, and mesh montage;
+- `downstream_ycb_task_oracle/`: 100-trial GT-mesh reachability sanity check;
+- `downstream_real_meshes/` and `downstream_real_task/`: six prior real AURORA
+  meshes and 180 separate scanner-GT transfer trials;
+- `downstream_single_view_raw/` and `downstream_single_view_raw_24k/`: formal
+  SPAR3D and uniform-configuration TRELLIS.2 raw single-image outputs.
 
 The `baseline_slip_pose_ray/`, `ablation_slip_robustness/`, and
 `continuous_empirical_failed_x_outage/` trees are retained as completed

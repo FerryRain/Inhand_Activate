@@ -1,0 +1,94 @@
+base: formal_120_common.yaml
+
+seed: 20260807
+
+runtime:
+  require_cuda: true
+
+experiment:
+  output_dir: rebuttal/results/downstream_ycb_reconstruction
+  initial_pose_seeds: [0, 1, 2]
+  actnerf_seeds: [0]
+  save_images: true
+  counterfactual: false
+
+environment:
+  backend: open3d_cpu
+  level: realistic
+  action_steps: 5
+  action_duration_s: 6.0
+  sensor_rate_hz: 15.0
+  frames_per_action: 90
+  bootstrap_degrees: 15.0
+  stress: {}
+  action_calibration_path: rebuttal/assets/action_calibration.json
+  robustness:
+    # Tracking inference is omitted in simulation: fusion receives the exact
+    # executed pose.  Sensing and manipulation failure modes remain active.
+    pose_jitter_deg: 0.0
+    translation_jitter_mm: 0.0
+    drift_per_step_deg: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.03
+    mask_morphology_px: 2
+    occlusion_fraction: 0.25
+    occlusion_fraction_std: 0.10
+    occlusion_outlier_probability: 0.08
+    occlusion_outlier_fraction: 0.30
+    action_noise_mode: empirical
+    action_noise_scale: 0.5
+    action_progress_scale_range: [0.55, 0.85]
+    action_stall_probability: 0.25
+    action_stall_scale_range: [0.08, 0.30]
+    grip_slip_probability: 0.22
+    grip_slip_angle_deg_range: [12.0, 30.0]
+    slip_axis_drift_deg_range: [15.0, 30.0]
+    slip_axis_drift_max_deg: 50.0
+
+assets:
+  output_dir: rebuttal/assets/ycb/benchmark_manifest
+  skip_default_prepare: true
+  objects:
+    - 003_cracker_box
+    - 004_sugar_box
+    - 005_tomato_soup_can
+    - 006_mustard_bottle
+    - 007_tuna_fish_can
+    - 008_pudding_box
+    - 009_gelatin_box
+    - 010_potted_meat_can
+    - 021_bleach_cleanser
+    - 025_mug
+  mesh_paths:
+    003_cracker_box: rebuttal/assets/ycb/models/003_cracker_box/google_16k/nontextured.ply
+    004_sugar_box: rebuttal/assets/ycb/models/004_sugar_box/google_16k/nontextured.ply
+    005_tomato_soup_can: rebuttal/assets/ycb/models/005_tomato_soup_can/google_16k/nontextured.ply
+    006_mustard_bottle: rebuttal/assets/ycb/models/006_mustard_bottle/google_16k/nontextured.ply
+    007_tuna_fish_can: rebuttal/assets/ycb/models/007_tuna_fish_can/google_16k/nontextured.ply
+    008_pudding_box: rebuttal/assets/ycb/models/008_pudding_box/google_16k/nontextured.ply
+    009_gelatin_box: rebuttal/assets/ycb/models/009_gelatin_box/google_16k/nontextured.ply
+    010_potted_meat_can: rebuttal/assets/ycb/models/010_potted_meat_can/google_16k/nontextured.ply
+    021_bleach_cleanser: rebuttal/assets/ycb/models/021_bleach_cleanser/google_16k/nontextured.ply
+    025_mug: rebuttal/assets/ycb/models/025_mug/google_16k/nontextured.ply
+
+fusion:
+  voxel_size: 0.0015
+  depth_stride: 2
+  filter_mode: full
+  min_view_change_deg: 8.0
+  min_visibility_ratio: 0.40
+  max_pose_error_deg: 0.1
+  max_translation_error_m: 0.0001
+
+evaluation:
+  thresholds_m: [0.002, 0.005, 0.010]
+  gt_sample_count: 30000
+
+planners:
+  enabled: [fixed, pose_novelty, pb_nbv, ray_gpis, actnerf]
+  pb_nbv:
+    voxel_divisor: 70.0
+  ray_gpis:
+    grid_res: 2

@@ -144,7 +144,93 @@ as evidence: a single-view empirical replay made both planners select the same
 action in all 43 completed scenes; one shared-prefix Cube pilot agreed in
 14/15 scenes; a two-prefix Cube pilot gave only +0.00074 mean Ray F gain.
 
-## 7. Audit status and result locations
+## 7. Continuous realistic-stress diversity evaluation
+
+The two added objects were additionally evaluated with the original AURORA
+closed-loop timing: one initial observation, five complete 6-second active
+primitives, and fixed-camera RGB-D acquisition at 15 FPS (90 frames/action).
+Full keyframe filtering and fusion process all 450 action frames, while
+Ray-GPIS replans only at each 6-second boundary. Simulation supplies exact
+executed pose instead of running the tracking network. Dynamic palm/two-finger
+occlusion, depth/mask corruption, under-rotation, stall, grip slip, and
+persistent post-slip axis drift remain enabled.
+
+| Object | Episodes | F-AUC | Final F@5 | Recall@5 | Chamfer (mm) | Accepted keyframes | Visibility | Stall | Slip |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Bowl | 15 | 0.6402+-0.0534 | 0.8107+-0.0695 | 0.6992+-0.0831 | 4.758+-0.967 | 20.6+-4.3 | 0.511+-0.009 | 0.280+-0.126 | 0.200+-0.108 |
+| Thin-Irregular | 15 | 0.7046+-0.0306 | 0.9274+-0.0219 | 0.8673+-0.0360 | 3.579+-0.602 | 31.1+-3.4 | 0.575+-0.004 | 0.293+-0.100 | 0.173+-0.084 |
+| Combined | 30 | 0.6724+-0.0324 | 0.8690+-0.0416 | 0.7832+-0.0540 | 4.168+-0.599 | 25.8+-3.3 | 0.543+-0.013 | 0.287+-0.079 | 0.187+-0.068 |
+
+Audit: all 30 episodes contain exactly 450 continuously rendered action
+frames, 451 keyframe decisions including the initial observation, and six
+action-boundary reconstruction states. All 150 Ray-GPIS steps use CUDA, all
+150 score maps contain finite candidates, and simulated tracking error is
+exactly zero. Full results are in
+`results/diversity_continuous_realistic/continuous_diversity_summary.md`.
+
+## 8. Sequential place-and-regrasp downstream task
+
+This geometry-grounded quasi-static simulation uses 10 metric YCB objects,
+three paired reconstruction episodes per object, and ten deterministic
+execution perturbations per reconstructed mesh: 30 trials/object/method and
+300 trials/method. The task planner sees only the reconstructed mesh and
+selects a stable support pose plus a top-down antipodal parallel-jaw regrasp;
+placement and contact execution are checked against metric GT. A GT-mesh
+oracle obtains 100% placement, 99% stage-2 regrasp, and 99% joint success.
+
+Every active reconstruction executes five complete 6-second primitives with
+15 RGB-D frames/s. Dynamic hand occlusion, depth/mask corruption,
+under-rotation, stalls, grip slip, and persistent axis drift remain active;
+tracking inference is omitted and fusion receives the exact executed pose.
+All RGB-D methods use the same GPU NKSR mesh backend. SPAR3D and TRELLIS.2
+receive clean single images and favorable oracle isotropic similarity
+alignment. TRELLIS.2 uses one uniform 1024-cascade, 24,576-token configuration
+for all 30 inputs; texture-latent sampling is skipped after verifying that the
+decoded geometry matches the full same-seed pipeline at the independent
+surface-sampling floor.
+
+| Reconstruction source | Placement | Stage-2 regrasp | Joint |
+|---|---:|---:|---:|
+| Single RGB-D | 39.7% | 20.0% | 6.7% |
+| SPAR3D (oracle-align) | 30.0% | 15.0% | 5.0% |
+| TRELLIS.2 (oracle-align) | 19.7% | 7.7% | 0.0% |
+| Fixed schedule | 50.0% | 44.0% | 24.0% |
+| Adapted PB-NBV | 43.3% | 40.0% | 23.0% |
+| Adapted ActNeRF | 56.0% | 72.0% | 41.7% |
+| Pose-Novelty | 56.7% | **79.3%** | 44.7% |
+| **Full Ray-GPIS** | **57.7%** | 77.7% | **45.0%** |
+| GT mesh oracle | 100.0% | 99.0% | 99.0% |
+
+Against Single RGB-D, Ray-GPIS improves placement/stage-2/joint success by
+18.0/57.7/38.3 percentage points (object-level paired Wilcoxon p=0.0394,
+0.0076, and 0.0115). Against Fixed, the numerical improvements are
+7.7/33.7/21.0 points; only the stage-2 difference is significant at 0.05
+(p=0.0117), so the joint result is not claimed as statistically established.
+Pose-Novelty remains essentially tied with Ray-GPIS in this aggregate, which
+is consistent with the conditional—not universal—Ray-over-Pose claim.
+
+Six existing real AURORA meshes are read exclusively from
+`reconstruction/offline/result/offline_tracking` and evaluated separately
+against scanner GT: placement 66.7%, stage-2 regrasp 72.2%, and joint 41.7%
+over 180 perturbed trials. They are not mixed into the paired YCB aggregate.
+Complete trials, object-cluster bootstrap intervals, paired comparisons,
+configuration, and mesh visualizations are under
+`results/downstream_ycb_task/` and `results/downstream_real_task/`.
+
+## 9. Audit status and result locations
+
+### Online pipeline runtime
+
+The runtime audit combines synchronized GPU inference on 120 saved real
+1280 x 720 keyframes with eight saved real-deployment timing logs. SAM2.1
+Hiera Tiny segmentation is 14.5+-0.2 ms/frame. The recorded end-to-end
+perception/BundleTrack call is 242.9+-47.9 ms/frame over 2,041 calls; this
+already includes segmentation and is not additive with the standalone SAM2
+row. Point-cloud fusion is 1,649.6+-194.0 ms/update over 36 active updates.
+Ray-GPIS GP/representation update and candidate scoring are 261.3+-24.2 ms
+and 0.072+-0.001 ms, respectively, and the recorded NBV-to-action mapping is
+2.42 ms. The segmentation and Ray-GPIS CUDA measurements use the RTX 4090 D;
+model loading, visualization, disk export, and manipulation are excluded.
 
 - Formal baselines: 960/960 stored runs complete; all 120 initial states paired.
 - Clean ablations: 600/600 episodes and 3,000 CUDA planning steps complete.
@@ -155,6 +241,11 @@ action in all 43 completed scenes; one shared-prefix Cube pilot agreed in
   branches match exactly between outputs.
 - ER-GPIS depth-gap check: 64/64 scenes complete, with action branches exactly
   matching the Pose/Ray reference output.
+- Continuous diversity stress: 30/30 episodes, 13,500 rendered action frames,
+  and 150/150 CUDA Ray-GPIS planning steps complete.
+- Downstream: 150/150 active reconstruction episodes, 240/240 evaluated YCB
+  meshes, 2,400/2,400 method trials, 100/100 oracle trials, and 180/180 prior
+  real-mesh transfer trials complete.
 - Selected saved counterfactual gain equals the realized next-state F@5 change.
 
 Primary files:
@@ -166,4 +257,8 @@ Primary files:
 - `results/stress_ablation_summary/stress_summary.md`
 - `results/visited_registration_gap/visited_gap_summary.md`
 - `results/visited_registration_gap_er_ray/er_ray_gap_summary.md`
+- `results/diversity_continuous_realistic/continuous_diversity_summary.md`
+- `results/pipeline_runtime/pipeline_runtime_summary.md`
+- `results/downstream_ycb_task/RESULTS.md`
+- `results/downstream_real_task/summary.json`
 - `RESULTS.md`

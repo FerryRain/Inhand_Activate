@@ -1,0 +1,976 @@
+[
+  {
+    "method": "actnerf",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 10,
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "placement_unstable": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.3333333333333333,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "placement_unstable": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "contact_mismatch": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "contact_mismatch": 10,
+      "placement_unstable": 10,
+      "success": 10
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.6,
+    "conditional_regrasp_success": 0.9666666666666667,
+    "sequential_success": 0.6,
+    "failure_reasons": {
+      "placement_perturbation": 2,
+      "placement_unstable": 10,
+      "success": 18
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.5666666666666667,
+    "sequential_success": 0.5666666666666667,
+    "failure_reasons": {
+      "contact_mismatch": 1,
+      "grasp_torque": 2,
+      "placement_unstable": 10,
+      "success": 17
+    }
+  },
+  {
+    "method": "actnerf",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 10,
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.13333333333333333,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 10,
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.3333333333333333,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.6,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.4,
+    "sequential_success": 0.1,
+    "failure_reasons": {
+      "not_antipodal": 17,
+      "placement_unstable": 10,
+      "success": 3
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "no_predicted_grasp": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.3,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.3,
+    "sequential_success": 0.3,
+    "failure_reasons": {
+      "grasp_torque": 1,
+      "placement_unstable": 20,
+      "success": 9
+    }
+  },
+  {
+    "method": "fixed",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "contact_mismatch": 10,
+      "placement_unstable": 10,
+      "success": 10
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 9,
+      "no_predicted_grasp": 20,
+      "not_antipodal": 1
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.1,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.43333333333333335,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "not_antipodal": 10,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.5333333333333333,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10,
+      "success": 10
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.36666666666666664,
+    "sequential_success": 0.36666666666666664,
+    "failure_reasons": {
+      "not_antipodal": 9,
+      "placement_unstable": 10,
+      "success": 11
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.3,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 0.9333333333333333,
+    "sequential_success": 0.9333333333333333,
+    "failure_reasons": {
+      "not_antipodal": 2,
+      "success": 28
+    }
+  },
+  {
+    "method": "pb_nbv",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 10,
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.5333333333333333,
+    "sequential_success": 0.36666666666666664,
+    "failure_reasons": {
+      "not_antipodal": 9,
+      "placement_unstable": 10,
+      "success": 11
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.8666666666666667,
+    "sequential_success": 0.2,
+    "failure_reasons": {
+      "not_antipodal": 4,
+      "placement_unstable": 20,
+      "success": 6
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.5666666666666667,
+    "sequential_success": 0.5666666666666667,
+    "failure_reasons": {
+      "not_antipodal": 3,
+      "placement_unstable": 10,
+      "success": 17
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 30
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 30
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "placement_unstable": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.9666666666666667,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "placement_unstable": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "pose_novelty",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 10,
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "grasp_torque": 10,
+      "placement_unstable": 10,
+      "success": 10
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.4666666666666667,
+    "conditional_regrasp_success": 0.7333333333333333,
+    "sequential_success": 0.26666666666666666,
+    "failure_reasons": {
+      "not_antipodal": 6,
+      "placement_perturbation": 6,
+      "placement_unstable": 10,
+      "success": 8
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "placement_unstable": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.6666666666666666,
+    "failure_reasons": {
+      "placement_unstable": 10,
+      "success": 20
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 1.0,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 1.0,
+    "failure_reasons": {
+      "success": 30
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.9666666666666667,
+    "sequential_success": 0.6333333333333333,
+    "failure_reasons": {
+      "not_antipodal": 1,
+      "placement_unstable": 10,
+      "success": 19
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.3,
+    "conditional_regrasp_success": 1.0,
+    "sequential_success": 0.3,
+    "failure_reasons": {
+      "placement_perturbation": 1,
+      "placement_unstable": 20,
+      "success": 9
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.9666666666666667,
+    "sequential_success": 0.6333333333333333,
+    "failure_reasons": {
+      "grasp_torque": 1,
+      "placement_unstable": 10,
+      "success": 19
+    }
+  },
+  {
+    "method": "ray_gpis",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.7666666666666667,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.3,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 10,
+      "not_antipodal": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 10,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "not_antipodal": 10,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.6666666666666666,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "placement_unstable": 20,
+      "success": 10
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "not_antipodal": 20,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.5666666666666667,
+    "sequential_success": 0.3333333333333333,
+    "failure_reasons": {
+      "contact_mismatch": 1,
+      "not_antipodal": 9,
+      "placement_unstable": 10,
+      "success": 10
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.3,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 9,
+      "placement_perturbation": 1,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "contact_mismatch": 10,
+      "no_predicted_grasp": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "single_view_depth",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.4666666666666667,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "jaw_width": 20,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.23333333333333334,
+    "sequential_success": 0.23333333333333334,
+    "failure_reasons": {
+      "not_antipodal": 3,
+      "placement_unstable": 20,
+      "success": 7
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.16666666666666666,
+    "sequential_success": 0.16666666666666666,
+    "failure_reasons": {
+      "not_antipodal": 5,
+      "placement_unstable": 20,
+      "success": 5
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.3,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.13333333333333333,
+    "sequential_success": 0.1,
+    "failure_reasons": {
+      "contact_mismatch": 6,
+      "not_antipodal": 1,
+      "placement_unstable": 20,
+      "success": 3
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.3333333333333333,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 10,
+      "not_antipodal": 10,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_gt_contact": 8,
+      "not_antipodal": 2,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.3333333333333333,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_gt_contact": 10,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "spar3d",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "003_cracker_box",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 10,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "004_sugar_box",
+    "trials": 30,
+    "placement_success": 0.3333333333333333,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_gt_contact": 10,
+      "placement_unstable": 20
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "005_tomato_soup_can",
+    "trials": 30,
+    "placement_success": 0.6333333333333333,
+    "conditional_regrasp_success": 0.3,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 19,
+      "placement_perturbation": 1,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "006_mustard_bottle",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "007_tuna_fish_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "008_pudding_box",
+    "trials": 30,
+    "placement_success": 0.6666666666666666,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "no_predicted_grasp": 20,
+      "placement_unstable": 10
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "009_gelatin_box",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "010_potted_meat_can",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.4666666666666667,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "021_bleach_cleanser",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  },
+  {
+    "method": "trellis2",
+    "object": "025_mug",
+    "trials": 30,
+    "placement_success": 0.0,
+    "conditional_regrasp_success": 0.0,
+    "sequential_success": 0.0,
+    "failure_reasons": {
+      "placement_unstable": 30
+    }
+  }
+]

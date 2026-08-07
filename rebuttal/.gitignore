@@ -4,6 +4,11 @@ __pycache__/
 results/_scratch/
 assets/objects/manifest.json
 
+# Downloaded datasets and generated mesh assets are kept locally.
+assets/ycb/
+results/downstream_single_view_raw*/
+results/downstream_*_meshes/
+
 # Per-episode raw data are archived externally; keep result summaries, tables,
 # validation reports, and plots visible to Git.
 results/**/pose_*/

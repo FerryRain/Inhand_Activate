@@ -1,0 +1,94 @@
+{
+  "protocol": {
+    "timestamp_utc": "2026-08-06T18:56:05Z",
+    "python": "3.8.20",
+    "torch": "2.4.1+cu121",
+    "cuda_available": true,
+    "gpu": "NVIDIA GeForce RTX 4090 D",
+    "tracking_log_glob": "reconstruction/offline/result/online_tracking/**/timing_stats.json"
+  },
+  "real_online_logs": {
+    "sequences": 8,
+    "tracking_calls": 2041,
+    "tracking_ms_per_frame": {
+      "mean": 242.86929252491575,
+      "ci95": 47.90849577822242,
+      "std": 69.13555559434317,
+      "median": 215.41670877528196,
+      "min": 201.00638816498352,
+      "max": 407.36594703321816,
+      "n": 8
+    },
+    "source_note": "stage/tracking is the recorded end-to-end online tracker call and includes image acquisition, segmentation, BundleTrack request, and response",
+    "fusion_ms_per_update": {
+      "mean": 1649.5662103929135,
+      "ci95": 193.99020362696126,
+      "std": 279.9424254456806,
+      "median": 1754.3803060048958,
+      "min": 1210.2439221926033,
+      "max": 1964.9996095977258,
+      "n": 8,
+      "total_calls": 36
+    },
+    "action_mapping_ms_per_update": {
+      "mean": 2.420462406189472,
+      "ci95": 2.6840933524288726,
+      "std": 3.873348185388142,
+      "median": 0.6540275528095663,
+      "min": 0.28057475719833747,
+      "max": 11.356974800582975,
+      "n": 8,
+      "total_calls": 36
+    }
+  },
+  "ray_gpis": {
+    "representation_update_ms": {
+      "mean": 261.33908315019653,
+      "ci95": 24.15645380842577,
+      "n": 120
+    },
+    "candidate_scoring_ms": {
+      "mean": 0.07247065003563574,
+      "ci95": 0.0012980679391538185,
+      "n": 120
+    },
+    "total_planning_ms": {
+      "mean": 261.4115538002322,
+      "ci95": 24.156087918231428,
+      "n": 120
+    },
+    "source": "rebuttal/results/formal_120_sixview_gpu/runtime_metrics.csv"
+  },
+  "segmentation": {
+    "model": "SAM2.1 Hiera Tiny",
+    "checkpoint": "sam_model/sam2.1_hiera_tiny.pt",
+    "config": "configs/sam2.1/sam2.1_hiera_t.yaml",
+    "device": "NVIDIA GeForce RTX 4090 D",
+    "amp": true,
+    "warmup": 10,
+    "latency_ms_per_frame": {
+      "mean": 14.53119551636822,
+      "ci95": 0.20638146902517418,
+      "std": 1.1534672044504248,
+      "median": 14.268882994656451,
+      "min": 13.006908993702382,
+      "max": 21.459913987200707,
+      "n": 120
+    },
+    "nonempty_predictions": 120,
+    "prompt_mask_iou": {
+      "mean": 0.8444085645934655,
+      "ci95": 0.015750350736995856,
+      "std": 0.08802879987010967,
+      "median": 0.8785063891394258,
+      "min": 0.5471698113207547,
+      "max": 0.9388203225562202,
+      "n": 120
+    },
+    "frame_roots": [
+      "Tracking/BundleTrack/results/xyz",
+      "Tracking/BundleTrack/results/001",
+      "Tracking/BundleTrack/results/002"
+    ]
+  }
+}

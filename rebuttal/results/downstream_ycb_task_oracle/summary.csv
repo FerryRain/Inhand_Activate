@@ -1,0 +1,2 @@
+method,objects,reconstructed_meshes,trials,placement_success,placement_success_ci95,conditional_regrasp_success,conditional_regrasp_success_ci95,sequential_success,sequential_success_ci95
+gt,10,10,100,1.0,"[1.0, 1.0]",0.99,"[0.97, 1.0]",0.99,"[0.97, 1.0]"
