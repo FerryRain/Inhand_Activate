@@ -269,6 +269,44 @@ class CoreBenchmarkTest(unittest.TestCase):
         self.assertAlmostEqual(observation.translation_error_m, 0.008, places=8)
         np.testing.assert_allclose(observation.executed_pose, repeated.executed_pose)
 
+    def test_pose_noise_ablation_pairs_error_across_different_actions(self):
+        cfg = load_config(
+            str(REBUTTAL_ROOT / "configs" / "ablation_pose_noise.yaml")
+        )
+        cfg["camera"] = copy.deepcopy(self.cfg["camera"])
+        first = KinematicRGBDEnv(cfg, self.manifest["Cube"], seed=2026)
+        second = KinematicRGBDEnv(cfg, self.manifest["Cube"], seed=2026)
+        first.reset(7)
+        second.reset(7)
+        minus_x = first.step("minus_x")
+        plus_z = second.step("plus_z")
+
+        first_rotation_error = (
+            minus_x.executed_pose[:3, :3] @ minus_x.gt_pose[:3, :3].T
+        )
+        second_rotation_error = (
+            plus_z.executed_pose[:3, :3] @ plus_z.gt_pose[:3, :3].T
+        )
+        first_translation_error = (
+            minus_x.executed_pose[:3, 3] - minus_x.gt_pose[:3, 3]
+        )
+        second_translation_error = (
+            plus_z.executed_pose[:3, 3] - plus_z.gt_pose[:3, 3]
+        )
+
+        self.assertIn("scheduled_pose_outlier", minus_x.fault_tags)
+        self.assertIn("scheduled_pose_outlier", plus_z.fault_tags)
+        self.assertAlmostEqual(minus_x.pose_error_deg, 6.0, places=6)
+        self.assertAlmostEqual(plus_z.pose_error_deg, 6.0, places=6)
+        self.assertAlmostEqual(minus_x.translation_error_m, 0.003, places=8)
+        self.assertAlmostEqual(plus_z.translation_error_m, 0.003, places=8)
+        np.testing.assert_allclose(
+            first_rotation_error, second_rotation_error, atol=1e-10
+        )
+        np.testing.assert_allclose(
+            first_translation_error, second_translation_error, atol=1e-10
+        )
+
     def test_occlusion_schedule_is_step_specific(self):
         cfg = load_config(str(REBUTTAL_ROOT / "configs" / "stress_hole.yaml"))
         cfg["camera"] = copy.deepcopy(self.cfg["camera"])

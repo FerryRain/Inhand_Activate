@@ -1,0 +1,49 @@
+base: formal_120_sixview_gpu.yaml
+
+# Strict planner-only robustness comparison.  Every planner sees the same
+# deterministic 6-DoF tracking perturbation after each of the five actions;
+# action execution, RGB-D, masks, and visibility remain clean.
+environment:
+  level: realistic
+  frames_per_action: 1
+  robustness:
+    action_noise_mode: none
+    axis_deviation_deg: 0.0
+    magnitude_error_deg: 0.0
+    pose_jitter_deg: 0.0
+    drift_per_step_deg: 0.0
+    translation_jitter_mm: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    pose_outlier_deg: 0.0
+    translation_outlier_mm: 0.0
+    depth_noise_mm: 0.0
+    depth_dropout_fraction: 0.0
+    mask_morphology_px: 0
+    occlusion_fraction: 0.0
+    occlusion_fraction_std: 0.0
+    occlusion_outlier_probability: 0.0
+    occlusion_outlier_fraction: 0.0
+  stress:
+    name: paired_pose_noise_6deg_3mm
+    pose_outlier_steps: [1, 2, 3, 4, 5]
+    pose_outlier_deg: 6.0
+    translation_outlier_mm: 3.0
+
+fusion:
+  # Filtering is ablated separately.  Keeping all frames isolates whether the
+  # planner components remain useful when their common fused state is built
+  # from identically perturbed poses.
+  filter_mode: all
+
+experiment:
+  output_dir: rebuttal/results/ablation_pose_noise
+  counterfactual: true
+
+planners:
+  enabled:
+    - ray_gpis_novelty_only
+    - ray_gpis_uncertainty_only
+    - ray_gpis_pointwise
+    - ray_gpis_hit_only
+    - ray_gpis
