@@ -1,22 +1,23 @@
 \documentclass[conference]{IEEEtran}
 \usepackage{times}
 \usepackage[numbers]{natbib}
+\usepackage{multicol}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage[bookmarks=true]{hyperref}
 \usepackage{tabularx}
-\begin{document}
-\small
+\newcommand{\newparagraph}[1]{{\bf #1.}}
 
-\title{Rebuttal for CoRL Submission \#416\vspace{-0.9cm}}
+\begin{document}
+
+\title{Rebuttal for CoRL Submission \#416\vspace{-1cm}}
 \maketitle
 \thispagestyle{empty}
-\vspace{-0.15cm}
 
-{\small We thank the AC and all reviewers for constructive comments.
-We clarify review questions as follows (R1=BKKY, R2=dWbG, R3=4zfY). }
+We thank the AC and all reviewers for constructive comments.
+We clarify review questions as follows (R1=BKKY, R2=dWbG, R3=4zfY).
 
-\section*{1. Additional Baselines \& Downstream Value}
+\newparagraph{1. Additional Baselines \& Downstream Value}
 
 \textbf{Q1 (AC, R2, R3): Do we compare with ActNeRF/PB-NBV, and how does AURORA relate to Scalable Real2Sim?}
 We have compared AURORA with adapted ActNeRF~\cite{actnerf} and
@@ -35,13 +36,8 @@ its acquisition strategy is closer to the pose-conditioned baseline in Q2.
 \caption{Planner comparison over 120 paired episodes with GT pose and exact
 RGB--depth registration.}
 \label{tab:planner}
-\vspace{-0.12cm}
 
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{0.96}
-
-\begin{tabular}{lcc}
+\begin{tabularx}{\linewidth}{Xcc}
 \toprule
 \multicolumn{3}{l}{\textbf{Reconstruction performance}} \\
 Method & F-AUC$\uparrow$ & Final F$\uparrow$ \\
@@ -57,18 +53,16 @@ Pose-Novelty
 \textbf{Ray-GPIS}
   & $\mathbf{0.8987{\pm}0.0091}$ & $\mathbf{0.9814{\pm}0.0100}$ \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 
-\vspace{3pt}
-
-\begin{tabular}{lccc}
+\begin{tabularx}{\linewidth}{Xccc}
 \toprule
 \multicolumn{4}{l}{\textbf{Planner ranking and efficiency}} \\
 Method & Corr.$\uparrow$ & Regret$\downarrow$ & Time (s)$\downarrow$ \\
 \midrule
 Fixed
   & -- & $0.0806{\pm}0.0025$ & $0.000$ \\
-ActNeRF
+Act\allowbreak NeRF
   & $0.1619{\pm}0.0337$
   & $0.0317{\pm}0.0029$
   & $2.238{\pm}0.018$ \\
@@ -85,9 +79,7 @@ Pose-Novelty
   & $\mathbf{0.0088{\pm}0.0051}$
   & $\mathbf{0.261{\pm}0.024}$ \\
 \bottomrule
-\end{tabular}
-
-\vspace{-0.12cm}
+\end{tabularx}
 \end{table}
 
 \textbf{Q2 (AC, R1, R2): Would a simpler pose-conditioned reorientation
@@ -106,13 +98,8 @@ errors is summarized in Q5.
 \caption{Robustness and ablation results: \textbf{(a) Baseline robustness}
 under sensing failure; \textbf{(b) Ablation} of Ray-GPIS components.}
 \label{tab:robust}
-\vspace{-0.12cm}
 
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{0.96}
-
-\begin{tabular}{p{0.44\columnwidth}lcc}
+\begin{tabularx}{\linewidth}{Xlcc}
 \toprule
 Test / comparator & Metric & Comp. & \textbf{Full} \\
 \midrule
@@ -123,7 +110,7 @@ Visited but unfused (70\%) / Pose-Novelty
   & 0.2827
   & $\mathbf{0.5066}$ \\
 
-\addlinespace[3pt]
+\midrule
 \multicolumn{4}{l}{\textbf{(b) Ablation}} \\
 Clean / Novelty only
   & F-AUC$\uparrow$
@@ -145,14 +132,10 @@ Pose jitter ($6^\circ$/3\,mm) / w/o RF integration
   & 0.2724
   & $\mathbf{0.5028}$ \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 
-\vspace{1pt}
-{\scriptsize
 Full = Ray-GPIS. Metrics are failure-specific and not cross-row comparable.
-}
 
-\vspace{-0.12cm}
 \end{table}
 
 \textbf{Q3 (AC, R2, R1): Is the improved mesh useful downstream?}
@@ -169,9 +152,7 @@ the same downstream applicability.
 \caption{Downstream success on diverse objects (30 trials/object/method).
 }
 \label{tab:downstream}
-\vspace{-0.22cm}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lccc}
+\begin{tabularx}{\linewidth}{Xccc}
 \toprule
 Reconstruction source & Placement$\uparrow$ & Regrasp$\uparrow$ & Joint$\uparrow$ \\
 \midrule
@@ -186,11 +167,10 @@ Adapted ActNeRF & 56.0 & 72.0 & 41.7 \\
 \midrule
 GT mesh (oracle) & 100.0 & 99.0 & 99.0 \\
 \bottomrule
-\end{tabular}}
-\vspace{-0.25cm}
+\end{tabularx}
 \end{table}
 
-\section*{2. Ablations, Robustness, Diversity \& Runtime}
+\newparagraph{2. Ablations, Robustness, Diversity \& Runtime}
 
 \textbf{Q4 (R1, R3): Can the key Ray-GPIS components be ablated?}
 Yes. Full Ray-GPIS slightly improves overall reconstruction AUC over both
@@ -221,7 +201,7 @@ while fusion, GP update, candidate scoring, and NBV-to-action mapping take
 $1,649.6{\pm}194.0$, $261{\pm}24$, $0.072{\pm}0.001$, and $2.42$\,ms/update,
 respectively.
 
-\section*{Other Responses}
+\newparagraph{Other Responses}
 \textbf{Q8 (R2): Why use in-hand rotation if Ray-GPIS is
 controller-agnostic?} We study in-hand rotation because active reconstruction
 under hand occlusion and contact-constrained motion remains largely unexplored.
@@ -230,6 +210,6 @@ feasible tactile rotations; controller-agnostic describes Ray-GPIS's
 transferability, not the absence of this setting-specific challenge.
 
 
-{\footnotesize \bibliographystyle{plainnat}\bibliography{references}}
+{\small \bibliographystyle{plainnat}\bibliography{references}}
 
 \end{document}

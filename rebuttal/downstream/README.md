@@ -65,25 +65,25 @@ TRELLIS.2 model and `nksr` for the common GPU meshing backend.
 ## Reproduction commands
 
 ```bash
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_baselines \
   --config rebuttal/configs/downstream_ycb_reconstruction.yaml \
   --planners fixed,pose_novelty,pb_nbv,ray_gpis,actnerf
 
-conda run --no-capture-output -n nksr python rebuttal/build_downstream_meshes.py \
+conda run --no-capture-output -n nksr python -m rebuttal.scripts.preparation.build_downstream_meshes \
   --backend nksr --overwrite
 
-conda run -n robosyn_gpu python rebuttal/render_ycb_single_view_inputs.py
-conda run --no-capture-output -n spar3d python rebuttal/run_spar3d_batch.py
-conda run --no-capture-output -n trellis2 python rebuttal/run_trellis2_batch.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.preparation.render_ycb_single_view_inputs
+conda run --no-capture-output -n spar3d python -m rebuttal.scripts.runners.run_spar3d_batch
+conda run --no-capture-output -n trellis2 python -m rebuttal.scripts.runners.run_trellis2_batch \
   --output rebuttal/results/downstream_single_view_raw_24k/trellis2 \
   --max-num-tokens 24576 --reload-every 0
 
-conda run -n robosyn_gpu python rebuttal/align_downstream_meshes.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.preparation.align_downstream_meshes \
   --methods spar3d --overwrite
-conda run -n robosyn_gpu python rebuttal/align_downstream_meshes.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.preparation.align_downstream_meshes \
   --raw-root rebuttal/results/downstream_single_view_raw_24k \
   --methods trellis2 --overwrite
-conda run -n robosyn_gpu python rebuttal/evaluate_downstream.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_downstream \
   --methods single_view_depth,spar3d,trellis2,fixed,pose_novelty,pb_nbv,actnerf,ray_gpis
-conda run -n robosyn_gpu python rebuttal/summarize_downstream.py
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_downstream
 ```

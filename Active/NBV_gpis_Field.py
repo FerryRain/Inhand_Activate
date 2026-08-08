@@ -621,6 +621,7 @@ class GPISNBVv3:
         self._nov_rf: Optional[np.ndarray] = None
         self._unc_base: Optional[np.ndarray] = None
         self._nov_base: Optional[np.ndarray] = None
+        self._hit_mask: Optional[np.ndarray] = None
 
     def estimate(self, pcd: Union[str, o3d.geometry.PointCloud], seed: int = 0, verbose: bool = True) -> Dict[str, Any]:
         set_seed(seed)
@@ -890,6 +891,7 @@ class GPISNBVv3:
         self._nov_rf = nov_rf
         self._unc_base = max_var
         self._nov_base = novelty_base
+        self._hit_mask = np.isfinite(t_hit)
 
         nbv_out = {
             "best_idx": best_idx,

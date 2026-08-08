@@ -13,12 +13,12 @@ REPO_ROOT = REBUTTAL_ROOT.parent
 if str(REBUTTAL_ROOT) not in sys.path:
     sys.path.insert(0, str(REBUTTAL_ROOT))
 
-from benchmark.assets import load_mesh
-from benchmark.config import load_config
-from benchmark.environment import KinematicRGBDEnv
-from benchmark.evaluation import ReconstructionEvaluator
-from benchmark.fusion import PointCloudFusion
-from benchmark.geometry import (
+from rebuttal.benchmark.assets import load_mesh
+from rebuttal.benchmark.config import load_config
+from rebuttal.benchmark.environment import KinematicRGBDEnv
+from rebuttal.benchmark.evaluation import ReconstructionEvaluator
+from rebuttal.benchmark.fusion import PointCloudFusion
+from rebuttal.benchmark.geometry import (
     ACTIONS,
     action_rotation,
     candidate_action_assignments,
@@ -27,7 +27,7 @@ from benchmark.geometry import (
     next_view_direction,
     rotation_error_deg,
 )
-from benchmark.planners.pose_novelty import PoseNoveltyPlanner
+from rebuttal.benchmark.planners.pose_novelty import PoseNoveltyPlanner
 
 
 class CoreBenchmarkTest(unittest.TestCase):

@@ -2,6 +2,13 @@
 
 This folder implements the fixed-camera, kinematic planner benchmark specified for the rebuttal. Every method receives the same initial RGB-D observation, object mask, object pose, 256 Fibonacci candidate views, `{-x, -y, +z}` action primitives, point-cloud fusion, evaluator, and five-action budget. Each formal episode therefore contains exactly six acquired images: one initial image and five planner-selected images. Only the planner changes.
 
+## Code layout
+
+Reusable benchmark logic is under `benchmark/`, downstream task logic is under
+`downstream/`, and command-line entry points are grouped by stage under
+`scripts/`. Run those entry points as modules from the repository root; see
+[`scripts/README.md`](scripts/README.md) for the category map.
+
 ## Current renderer backend
 
 The minimal kinematic environment uses deterministic Open3D CPU ray casting. It has the fixed-camera and direct-pose-update semantics required by the protocol. The renderer is isolated in `benchmark/environment.py`; planner, fusion, action mapping, evaluator, counterfactual rollout, and output formats do not depend on the renderer.
@@ -23,7 +30,7 @@ The configured action magnitudes come from the median rotation at frame 180 (abo
 The full evidence is saved in `assets/action_calibration.json` and can be regenerated with:
 
 ```bash
-conda run -n robosyn python rebuttal/calibrate_actions.py
+conda run -n robosyn python -m rebuttal.scripts.preparation.calibrate_actions
 ```
 
 ## Commands
@@ -31,118 +38,113 @@ conda run -n robosyn python rebuttal/calibrate_actions.py
 Setup and unit tests can run in `robosyn`; final GPU baselines use `robosyn_gpu`:
 
 ```bash
-conda run -n robosyn python rebuttal/prepare_assets.py --config rebuttal/configs/base.yaml
+conda run -n robosyn python -m rebuttal.scripts.preparation.prepare_assets --config rebuttal/configs/base.yaml
 conda run -n robosyn python -m unittest discover -s rebuttal/tests -v
 
 # Final strict-six-image suite: 120 paired scenes, 960 stored runs.
 # Fixed/Pose/PB/ER/Ray use one run per scene; ActNeRF uses three seeds.
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_baselines \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
 
-conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_visibility_coverage \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml --overwrite
-conda run -n robosyn_gpu python rebuttal/evaluate_pose_viewpoint_coverage.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_pose_viewpoint_coverage \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
-conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_all_metrics \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
-conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.paired_statistics_all \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
-conda run -n robosyn_gpu python rebuttal/validate_results.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_results \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
-conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_gpu_runtime \
   --config rebuttal/configs/formal_120_sixview_gpu.yaml
 
 # Module-level online runtime audit. This combines synchronized SAM2-tiny
 # inference on 120 real frames with eight saved real-deployment timing logs.
-conda run --no-capture-output -n robosyn_gpu python \
-  rebuttal/benchmark_pipeline_runtime.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.evaluation.benchmark_pipeline_runtime \
   --segmentation-samples 120 --warmup 10
 
 # Clean component ablations
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_ablations \
   --config rebuttal/configs/ablation.yaml
-conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_visibility_coverage \
   --config rebuttal/configs/ablation.yaml --overwrite
-conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_all_metrics \
   --config rebuttal/configs/ablation.yaml
-conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.paired_statistics_all \
   --config rebuttal/configs/ablation.yaml
-conda run -n robosyn_gpu python rebuttal/validate_results.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_results \
   --config rebuttal/configs/ablation.yaml
-conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_gpu_runtime \
   --config rebuttal/configs/ablation.yaml
-conda run -n robosyn_gpu python rebuttal/validate_ablation_consistency.py
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_ablation_consistency
 
 # Strict-six-image component ablations under moderate empirical/noise corruption
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_ablations \
   --config rebuttal/configs/ablation_realistic.yaml
-conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_visibility_coverage \
   --config rebuttal/configs/ablation_realistic.yaml --overwrite
-conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_all_metrics \
   --config rebuttal/configs/ablation_realistic.yaml
-conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.paired_statistics_all \
   --config rebuttal/configs/ablation_realistic.yaml
-conda run -n robosyn_gpu python rebuttal/summarize_noise_exposure.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_noise_exposure \
   --config rebuttal/configs/ablation_realistic.yaml
-conda run -n robosyn_gpu python rebuttal/validate_results.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_results \
   --config rebuttal/configs/ablation_realistic.yaml
-conda run -n robosyn_gpu python rebuttal/validate_gpu_runtime.py \
+conda run -n robosyn_gpu python -m rebuttal.scripts.validation.validate_gpu_runtime \
   --config rebuttal/configs/ablation_realistic.yaml
 
 # Persistent action-mismatch stress: under-rotation/stall and grip slip.
 # The first sweep directly compares Pose-Novelty and Full Ray-GPIS; the
 # second uses the identical stress schedule for all five Ray-GPIS variants.
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_baselines \
   --config rebuttal/configs/baseline_slip_pose_ray.yaml
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_ablations \
   --config rebuttal/configs/ablation_slip_robustness.yaml
 
 for config in baseline_slip_pose_ray ablation_slip_robustness; do
-  conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+  conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_visibility_coverage \
     --config rebuttal/configs/${config}.yaml --overwrite
-  conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+  conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_all_metrics \
     --config rebuttal/configs/${config}.yaml
-  conda run -n robosyn_gpu python rebuttal/paired_statistics_all.py \
+  conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.paired_statistics_all \
     --config rebuttal/configs/${config}.yaml
-  conda run -n robosyn_gpu python rebuttal/summarize_action_mismatch.py \
+  conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_action_mismatch \
     --config rebuttal/configs/${config}.yaml
 done
 
 # Fresh-seed special-case active stress ablations
 for name in sparse ghost hole; do
-  conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+  conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_ablations \
     --config rebuttal/configs/stress_${name}.yaml
-  conda run -n robosyn_gpu python rebuttal/evaluate_visibility_coverage.py \
+  conda run -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_visibility_coverage \
     --config rebuttal/configs/stress_${name}.yaml
-  conda run -n robosyn_gpu python rebuttal/summarize_all_metrics.py \
+  conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_all_metrics \
     --config rebuttal/configs/stress_${name}.yaml
 done
 
 # Shared reference trajectories and Full/Pointwise pose-stability diagnostic
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_ablations.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_ablations \
   --config rebuttal/configs/stress_pose_reference.yaml
-conda run --no-capture-output -n robosyn_gpu python \
-  rebuttal/evaluate_pose_stability.py --repeats 20
-conda run -n robosyn_gpu python rebuttal/summarize_stress_ablation.py
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.evaluation.evaluate_pose_stability --repeats 20
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_stress_ablation
 
 # Visited-view local depth-registration gap: Pose/Hit/Full and exhaustive
 # five-variant component rerun under identical shared action branches.
-conda run --no-capture-output -n robosyn_gpu python \
-  rebuttal/run_continuous_one_step.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_continuous_one_step \
   --config rebuttal/configs/visited_registration_gap.yaml
-conda run --no-capture-output -n robosyn_gpu python \
-  rebuttal/run_continuous_one_step.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_continuous_one_step \
   --config rebuttal/configs/visited_registration_gap_ablation.yaml
-conda run -n robosyn_gpu python rebuttal/summarize_visited_gap.py
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_visited_gap
 
 # ER-GPIS versus Ray-GPIS on the identical visited-view gap scenes.
-conda run --no-capture-output -n robosyn_gpu python \
-  rebuttal/run_continuous_one_step.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_continuous_one_step \
   --config rebuttal/configs/visited_registration_gap_er_ray.yaml
-conda run -n robosyn_gpu python rebuttal/summarize_er_gap.py
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_er_gap
 
 # PB-NBV scale/partition sanity check
-conda run --no-capture-output -n robosyn_gpu python rebuttal/run_baselines.py \
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_baselines \
   --config rebuttal/configs/pb_sanity_120_gpu.yaml
 
 ```
@@ -195,7 +197,8 @@ details are documented in `downstream/README.md`.
 
 Each episode stores its resolved config and normalized GT mesh. Each `step_###/` contains `rgb.png`, `depth.npy`, `mask.png`, GT and executed poses, fused cloud, shared candidate directions, raw planner scores, selected NBV/action, metrics, and all three counterfactual action gains. `episode_summary.json` contains F@5/Recall/Coverage AUC, final metrics, score-gain Spearman correlation, oracle regret/accuracy, and timing.
 
-`summarize_all_metrics.py` produces raw per-seed data, paired-episode CSVs, and
+The `rebuttal.scripts.summarization.summarize_all_metrics` module produces raw
+per-seed data, paired-episode CSVs, and
 categorized Markdown/CSV tables with 95% confidence intervals. ActNeRF's three
 initialization seeds are averaged inside each `(object, initial pose)` pair
 before method aggregation, so all methods have the same 120 paired units.
