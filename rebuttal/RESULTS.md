@@ -255,7 +255,7 @@ Complete results are in `results/stress_ablation_summary/`,
 `results/stress_sparse/`, `results/stress_ghost/`, `results/stress_hole/`, and
 `results/stress_pose_stability/`.
 
-## Visited-view local depth-registration gap: Pose versus Ray
+## Visited-view local depth-registration gap (depth-only diagnostic)
 
 This mechanism-specific test uses 64 fresh paired scenes (8 objects x 8 pose
 seeds). After one shared prefix rotation, the tracked pose is added to the
@@ -299,6 +299,30 @@ is also not significant. This experiment does not support a Ray-over-ER claim,
 so ER-GPIS is omitted from the rebuttal comparison. The complete negative
 result is retained under `results/visited_registration_gap_er_ray/`.
 
+## Joint pose/depth visited-view gap: all active planners
+
+The updated rebuttal test uses the same 64-scene shared-prefix protocol while
+adding exact 6 deg / 3 mm pose error to both the faulty prefix observation and
+each subsequent shared action branch. Only the prefix loses a contiguous 70%
+depth region; the gap is transient, no method is prevented from revisiting,
+and action noise is disabled so the experiment isolates pose and depth error.
+
+| Planner | Missing-patch Recall@5 | Global F@5 gain | Global Corr. | Global Regret | Time (s) |
+|---|---:|---:|---:|---:|---:|
+| Pose-Novelty | 0.3121±0.0643 | **0.2142±0.0087** | **0.8359±0.0580** | **0.0041±0.0029** | **0.0002±0.0000** |
+| Adapted ActNeRF | 0.5303±0.0891 | 0.2006±0.0115 | 0.6563±0.1213 | 0.0177±0.0083 | 3.512±0.172 |
+| Adapted PB-NBV | **0.7161±0.0682** | 0.1450±0.0176 | -0.3909±0.1681 | 0.0733±0.0167 | 0.612±0.154 |
+| Ray-GPIS | 0.4778±0.0857 | 0.2010±0.0131 | 0.5625±0.1423 | 0.0173±0.0087 | 0.200±0.023 |
+
+Ray improves missing-patch Recall@5 over Pose by 0.16571 (95% bootstrap CI
+[0.09132, 0.24863]), with 17/46/1 wins/ties/losses and Holm-corrected
+p=4.58e-5. This supports the specific claim that reconstruction-aware planning
+can recover geometry that pose history incorrectly treats as covered. It does
+not establish universal Ray superiority: Pose remains stronger on global
+next-action quality, ActNeRF is statistically tied with Ray on local recovery,
+and PB-NBV recovers the local patch more strongly despite poor global action
+ranking. Complete outputs are in `results/baseline_joint_pose_depth_gap/`.
+
 ## Pose-versus-Ray robustness interpretation
 
 The experiments support a conditional, not universal, conclusion. Pose is
@@ -308,8 +332,9 @@ stall/slip stress favors Pose (0.6434 versus 0.6358). A 120-scene, one-decision
 replay of measured six-second trajectories with an axis-specific registration
 outage is also inconclusive: Ray-minus-Pose selected F gain is -0.00253 with
 95% CI [-0.01412, 0.00975]. Ray's supported advantage appears in the precise
-case where viewpoint history and acquired geometry disagree: the visited-view
-local depth gap above. This is the claim used in the rebuttal.
+joint pose/depth case where viewpoint history and acquired geometry disagree:
+the transient visited-view gap above. This narrow local-recovery claim is used
+in the rebuttal.
 
 ## Continuous 6-second diversity stress test
 

@@ -177,3 +177,6 @@ overall F-score gain is secondary and cannot replace the local primary metric.
   rerun under the identical 64 scenes and action branches.
 - `configs/visited_registration_gap_er_ray.yaml`: adapted ER-GPIS and Full
   Ray-GPIS on the same depth-gap scenes and shared action branches.
+- `configs/baseline_joint_pose_depth_gap.yaml`: Pose-Novelty, adapted ActNeRF,
+  adapted PB-NBV, and Ray-GPIS on the transient 70% depth gap with paired
+  6 deg / 3 mm pose error and no action-noise confound.

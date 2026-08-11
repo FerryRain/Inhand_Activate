@@ -1,0 +1,37 @@
+base: visited_registration_gap.yaml
+
+# Joint sensing-failure planner comparison. A shared prefix pose is tracked but
+# loses one contiguous 70% depth region before fusion. The missing region is
+# available again after this instant: no planner is prevented from revisiting
+# it. Exact 6 deg / 3 mm pose perturbations are applied both to the faulty
+# prefix observation and to every shared recovery branch.
+environment:
+  recover_tracking_at_decision_boundary: false
+  robustness:
+    action_noise_mode: none
+    action_noise_scale: 0.0
+    axis_deviation_deg: 0.0
+    magnitude_error_deg: 0.0
+    pose_jitter_deg: 0.0
+    drift_per_step_deg: 0.0
+    translation_jitter_mm: 0.0
+    translation_drift_per_step_mm: 0.0
+    pose_outlier_probability: 0.0
+    depth_noise_mm: 1.0
+    depth_dropout_fraction: 0.0
+    mask_morphology_px: 0
+    occlusion_fraction: 0.0
+  stress:
+    name: joint_pose_depth_gap
+    contiguous_dropout_steps: [1]
+    contiguous_dropout_fraction: 0.70
+    pose_outlier_steps: [1, 2]
+    pose_outlier_deg: 6.0
+    translation_outlier_mm: 3.0
+
+experiment:
+  output_dir: rebuttal/results/baseline_joint_pose_depth_gap
+  counterfactual: true
+
+planners:
+  enabled: [pose_novelty, actnerf, pb_nbv, ray_gpis]

@@ -24,8 +24,8 @@ We clarify review questions as follows (AC=Meta Reviewer, R1=BKKY, R2=dWbG, R3=4
 {\color{blue}\newparagraph{1. Additional Baselines \& Downstream Value}}
 
 \textbf{Q1 (AC, R2, R3): How does AURORA compare with ActNeRF~\cite{actnerf}, PB-NBV~\cite{pbnbv}, and Scalable Real2Sim~\cite{pfaff2025_scalable_real2sim}?}
-% We report F-AUC$\uparrow$ and F@5$\uparrow$ for reconstruction efficiency and final quality, {\color{red}Corr.$\uparrow$ for how well the planner ranks candidate views by their actual geometric gain}, and Time$\downarrow$ for planning efficiency. These metrics more directly isolate active-planning quality than terminal reconstruction metrics alone.
-(1) \emph{Comparison with ActNeRF~\cite{actnerf} and PB-NBV~\cite{pbnbv}}: We compare against adapted active-planning baselines~\cite{actnerf,pbnbv} in Table~\ref{tab:main}-(a). Ray-GPIS ranks executable actions more effectively and plans faster by scoring reconstruction uncertainty under in-hand action constraints.
+
+(1) \emph{Comparison with ActNeRF~\cite{actnerf} and PB-NBV~\cite{pbnbv}}: We compare against adapted active-planning baselines~\cite{actnerf,pbnbv} in Table~\ref{tab:main}-(a). We report F-AUC$\uparrow$ and F@5$\uparrow$ for reconstruction efficiency and final quality, {\color{red}Corr.$\uparrow$ for how well the planner ranks candidate views by their actual geometric gain}, and Time$\downarrow$ for planning efficiency. These metrics more directly isolate active-planning quality than terminal reconstruction metrics alone. Ray-GPIS ranks executable actions more effectively and plans faster by scoring reconstruction uncertainty under in-hand action constraints.
 (2) \emph{Scalable Real2Sim~\cite{pfaff2025_scalable_real2sim}}: It does not involve active exploration, as all trajectories are prescribed.
 
 
@@ -206,10 +206,10 @@ Method & Metric & Score \\
 
 \multicolumn{3}{l}{\emph{Finger occlusion: miss-ray interpolation}} \\
 Full Ray-GPIS
-& Unseen R-AUC$\uparrow$
+& Unseen R-AUC$\uparrow^*$
 & $\mathbf{0.5715}$ \\
 w/o miss-ray interp.
-& Unseen R-AUC$\uparrow$
+& Unseen R-AUC$\uparrow^*$
 & $0.5498;(-0.0217)$ \\
 
 \midrule
@@ -226,30 +226,7 @@ w/o RF integration
 \end{tabularx}
 
 \vspace{0.03cm}
-\begin{minipage}{\linewidth}
-\scriptsize
-\setlength{\abovedisplayskip}{2pt}
-\setlength{\belowdisplayskip}{2pt}
-\noindent\textit{Metrics.}
-\textit{F-AUC} measures reconstruction quality throughout exploration, while
-\textit{F@5} measures final reconstruction quality at the 5\,mm threshold.
-\textit{Unseen R-AUC} measures how effectively exploration recovers initially
-unobserved surfaces under persistent occlusion. For \textit{Corr.}, let
-$s_t(a)$ be the planner score of executable action $a$ at step $t$, and let
-$\Delta F_t(a)=F_t^{(a)}-F_t$ be its counterfactual F@5 gain. We report
-\[
-\begin{array}{c}
-\rho_t=\rho_{\mathrm S}\!\left(\{s_t(a)\}_{a\in\mathcal A},
-\{\Delta F_t(a)\}_{a\in\mathcal A}\right),\\[-1pt]
-\displaystyle
-\mathrm{Corr.}={1\over|\mathcal T_{\mathrm{valid}}|}
-\sum_{t\in\mathcal T_{\mathrm{valid}}}\rho_t,
-\end{array}
-\]
-where $\rho_{\mathrm S}$ is Spearman's rank correlation. Thus, higher Corr.
-means that the planner's action ranking better agrees with the true
-reconstruction-gain ranking.
-\end{minipage}
+\noindent\footnotesize{$^*$\textit{Unseen R-AUC} measures how effectively exploration recovers initially unobserved surfaces, reflecting performance under persistent occlusion.}
 
 \vspace{-0.31cm}
 \end{table}
@@ -257,13 +234,9 @@ reconstruction-gain ranking.
 {\color{blue}\newparagraph{2. Ablations, Robustness, Diversity \& Runtime}}
 
 % \textbf{Q4 (R1, R3): Can the key Ray-GPIS components be ablated?}
-
-\textbf{Q4 (R3, AC): Does the method generalize to more challenging irregular/concave objects?}
-Yes. As shown in Fig.~\ref{fig:additional_results}-(a), we additionally evaluate on the Mustard Bottle and Pitcher Base from the YCB dataset. Their F@5 scores are $0.8240{\pm}0.0695$ and $0.8352{\pm}0.0219$, respectively.
-
-\textbf{Q5 (R1, R3): Can the key Ray-GPIS components be ablated?}
+\textbf{Q4 (R1, R3): Can the key Ray-GPIS components be ablated?}
 {
-Yes. We ablate two robustness components in Table~I-(c): (1) \emph{miss-ray interpolation}, which infers anchors for rays without surface hits, and (2) \emph{receptive-field (RF) integration}, which locally aggregates GP uncertainty rather than querying only the intersection point. As shown in Table~\ref{tab:main}-(c) and Fig.~\ref{fig:additional_results}-(a), removing them degrades performance under occlusion and pose-error settings, respectively.
+Yes. We ablate two robustness components in Table~I-(c): (1) \emph{miss-ray interpolation}, which infers anchors for rays without surface hits, and (2) \emph{receptive-field (RF) integration}, which locally aggregates GP uncertainty rather than querying only the intersection point. As shown in Table~\ref{tab}-(c) and Fig.~\ref{tab}-(a), removing them degrades performance under occlusion and pose-error settings, respectively.
 }
 
 
@@ -275,13 +248,14 @@ Yes. We ablate two robustness components in Table~I-(c): (1) \emph{miss-ray inte
 
 
 
-\textbf{Q6 (R1, AC): How robust is AURORA to 6D pose-tracking errors?} We conducted an ablation that manually inject noise to estimated pose
+\textbf{Q5 (R1, AC): How robust is AURORA to 6D pose-tracking errors?} We conducted an ablation that manually inject noise to estimated pose
 on real RGB-D sequences, AURORA retains 96.3\% and 90.3\% of its
 zero-error F@5 under $5^\circ$/5\,mm and $10^\circ$/10\,mm pose perturbations,
 respectively.
 
 
-
+\textbf{Q6 (R3, AC): Does the method generalize to more challenging irregular/concave objects?}
+Yes. As shown in Fig.~\ref{}-(b), we additionally evaluate on the Mustard Bottle and Pitcher Base from the YCB dataset. Their F@5 scores are $0.8107{\pm}0.0695$ and $0.9274{\pm}0.0219$, respectively.
 
 \textbf{Q7 (R3, R1, AC): What is the per-module runtime, and why replan every 6\,s?}
 (1) \textbf{Interval:} The 6\,s interval is dictated by the hand controller, which needs this time to complete the tactile rotation and stabilize the grasp. (2) \textbf{Runtime:} GP update, candidate scoring, and NBV-to-action mapping take 261, 0.072, and 2.42,ms/update, respectively, while Segmentation and BundleTrack take 256.9,ms/frame.
@@ -289,10 +263,10 @@ respectively.
 \begin{figure}[t]
     \centering
 
-    \includegraphics[width=0.20\linewidth,height=1.5cm,keepaspectratio]{ray_1.png}\hfill
-    \includegraphics[width=0.20\linewidth,height=1.5cm,keepaspectratio]{ray_2.png}\hfill
-    \includegraphics[width=0.20\linewidth,height=1.5cm,keepaspectratio]{miss_ray.png}\hfill
-    \includegraphics[width=0.20\linewidth,height=1.5cm,keepaspectratio]{miss_rf.png}
+    \fbox{\rule{0pt}{1.5cm}\rule{0.20\linewidth}{0pt}}\hfill
+    \fbox{\rule{0pt}{1.5cm}\rule{0.20\linewidth}{0pt}}\hfill
+    \fbox{\rule{0pt}{1.5cm}\rule{0.20\linewidth}{0pt}}\hfill
+    \fbox{\rule{0pt}{1.5cm}\rule{0.20\linewidth}{0pt}}
 
     \vspace{0.05cm}
 

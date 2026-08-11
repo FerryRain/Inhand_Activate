@@ -143,6 +143,13 @@ conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.
   --config rebuttal/configs/visited_registration_gap_er_ray.yaml
 conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_er_gap
 
+# All Table-1 planners under a transient 70% depth gap plus paired
+# 6 deg / 3 mm pose error; later views remain available for revisiting.
+conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_continuous_one_step \
+  --config rebuttal/configs/baseline_joint_pose_depth_gap.yaml
+conda run -n robosyn_gpu python -m rebuttal.scripts.summarization.summarize_joint_pose_depth_gap \
+  --config rebuttal/configs/baseline_joint_pose_depth_gap.yaml
+
 # PB-NBV scale/partition sanity check
 conda run --no-capture-output -n robosyn_gpu python -m rebuttal.scripts.runners.run_baselines \
   --config rebuttal/configs/pb_sanity_120_gpu.yaml
@@ -180,6 +187,10 @@ in `results/visited_registration_gap/visited_gap_summary.md`.
 The same-scene ER-GPIS/Ray-GPIS check is complete under
 `results/visited_registration_gap_er_ray/`; it does not support a Ray-over-ER
 claim and is retained as a negative result rather than used in the rebuttal.
+The four-planner joint pose/depth test is complete under
+`results/baseline_joint_pose_depth_gap/`; its audited global planner metrics,
+missing-region recovery, and corrected paired tests are in
+`joint_gap_summary.md`.
 The online runtime audit is stored under `results/pipeline_runtime/`. It
 contains all 120 synchronized segmentation samples, the eight source-sequence
 summaries, hardware/protocol metadata, and the compact module-level table used

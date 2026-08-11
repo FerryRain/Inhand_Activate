@@ -21,6 +21,9 @@ Only reportable completed experiments are retained here:
   the identical visited-view gap scenes;
 - `visited_registration_gap_er_ray/`: same-scene ER-GPIS/Ray-GPIS check,
   retained as a completed negative comparison.
+- `baseline_joint_pose_depth_gap/`: 64-scene Pose/ActNeRF/PB-NBV/Ray-GPIS
+  comparison with a transient 70% depth gap, exact 6 deg / 3 mm pose error,
+  and no restriction on revisiting the missing view;
 - `downstream_ycb_reconstruction/`: 150 complete realistic continuous-acquisition
   episodes for Fixed, Pose-Novelty, PB-NBV, ActNeRF, and Ray-GPIS;
 - `downstream_ycb_meshes/`: 30 paired meshes for each of eight reconstruction

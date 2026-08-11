@@ -1,0 +1,149 @@
+{
+  "alignment": "one shared light-derived rigid transform per object",
+  "scale_fitting": false,
+  "threshold_mm": 5.0,
+  "surface_samples_per_direction": 100000,
+  "sampling_repeats": 5,
+  "objects": {
+    "pitcher": {
+      "gt_mesh": "/home/ferry/Code/Research/InHand/neuralfeels/data/assets/gt_models/ycb/019_pitcher_base/google_16k/nontextured.ply",
+      "alignment_reference": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/results/nksr_fused_cloud_eval_20260811/face_normals/pitcher_light_face.ply",
+      "transform_gt_from_reconstruction": [
+        [
+          -0.752044346858818,
+          0.6116842900844995,
+          0.24550280980371988,
+          0.04551826884131618
+        ],
+        [
+          -0.6569598164308356,
+          -0.7257288367889604,
+          -0.20425830472249298,
+          0.08241326140147623
+        ],
+        [
+          0.0532268724692332,
+          -0.31489678422742956,
+          0.9476322679871022,
+          0.15165229311373374
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "top_alignment_candidates": []
+    },
+    "mustard": {
+      "gt_mesh": "/home/ferry/Code/Research/InHand/neuralfeels/data/assets/gt_models/ycb/006_mustard_bottle/google_16k/nontextured.ply",
+      "alignment_reference": "/home/ferry/data/Code2/Research/Inhand_Activate/rebuttal/results/nksr_fused_cloud_eval_20260811/face_normals/mustard_light_face.ply",
+      "transform_gt_from_reconstruction": [
+        [
+          0.8287577311918886,
+          -0.5523127349052717,
+          -0.09006256631436808,
+          -0.03315697010284915
+        ],
+        [
+          0.5574723871464564,
+          0.8288789349906532,
+          0.046735946529428384,
+          -0.011313225529114367
+        ],
+        [
+          0.048838105603124245,
+          -0.08894017084663984,
+          0.9948389243746367,
+          0.09577889780023473
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "top_alignment_candidates": []
+    }
+  },
+  "results": [
+    {
+      "object": "pitcher",
+      "variant": "default",
+      "face_points": 4528,
+      "nksr_vertices": 412,
+      "nksr_triangles": 818,
+      "precision_at_5mm": 0.400056,
+      "recall_at_5mm": 0.061442,
+      "fscore_at_5mm": 0.10652070260062682,
+      "accuracy_mm": 8.566282198430322,
+      "completeness_mm": 78.3452825220197,
+      "chamfer_l1_mm": 86.91156472045002,
+      "precision_at_5mm_std": 0.0008787377310665697,
+      "recall_at_5mm_std": 0.0010425065947033633,
+      "fscore_at_5mm_std": 0.0015563765475580626,
+      "accuracy_mm_std": 0.0170776534697724,
+      "completeness_mm_std": 0.09849679117551788,
+      "chamfer_l1_mm_std": 0.10778118651543242
+    },
+    {
+      "object": "pitcher",
+      "variant": "light",
+      "face_points": 11164,
+      "nksr_vertices": 1292,
+      "nksr_triangles": 2576,
+      "precision_at_5mm": 0.42305200000000004,
+      "recall_at_5mm": 0.073672,
+      "fscore_at_5mm": 0.1254881706947302,
+      "accuracy_mm": 8.581303964469628,
+      "completeness_mm": 70.55320244191653,
+      "chamfer_l1_mm": 79.13450640638617,
+      "precision_at_5mm_std": 0.0016291009790678984,
+      "recall_at_5mm_std": 0.0008741395769555326,
+      "fscore_at_5mm_std": 0.0012448817023683347,
+      "accuracy_mm_std": 0.024343884203475684,
+      "completeness_mm_std": 0.17880677180044016,
+      "chamfer_l1_mm_std": 0.19342612286497343
+    },
+    {
+      "object": "mustard",
+      "variant": "default",
+      "face_points": 2767,
+      "nksr_vertices": 198,
+      "nksr_triangles": 388,
+      "precision_at_5mm": 0.534,
+      "recall_at_5mm": 0.14889799999999997,
+      "fscore_at_5mm": 0.23286477230068198,
+      "accuracy_mm": 7.050346571785026,
+      "completeness_mm": 32.60794460542198,
+      "chamfer_l1_mm": 39.65829117720701,
+      "precision_at_5mm_std": 0.001643760931522585,
+      "recall_at_5mm_std": 0.0005350420544218874,
+      "fscore_at_5mm_std": 0.0007642880266672331,
+      "accuracy_mm_std": 0.02180483084500605,
+      "completeness_mm_std": 0.06300593949468163,
+      "chamfer_l1_mm_std": 0.06901399346140955
+    },
+    {
+      "object": "mustard",
+      "variant": "light",
+      "face_points": 7102,
+      "nksr_vertices": 696,
+      "nksr_triangles": 1384,
+      "precision_at_5mm": 0.546274,
+      "recall_at_5mm": 0.20905800000000002,
+      "fscore_at_5mm": 0.3023894386098116,
+      "accuracy_mm": 7.167048321733257,
+      "completeness_mm": 26.624754863012782,
+      "chamfer_l1_mm": 33.79180318474604,
+      "precision_at_5mm_std": 0.0013943206230992674,
+      "recall_at_5mm_std": 0.0011278164744319035,
+      "fscore_at_5mm_std": 0.0011612612957900312,
+      "accuracy_mm_std": 0.016894729726996544,
+      "completeness_mm_std": 0.05010515866559035,
+      "chamfer_l1_mm_std": 0.03702575914831484
+    }
+  ]
+}

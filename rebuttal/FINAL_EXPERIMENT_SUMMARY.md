@@ -106,15 +106,32 @@ receptive-field integration score-map stability +0.15931 (Holm p=8.29e-21).
 |---|---|---:|---:|---:|---:|
 | Contiguous palm hole / Hit-only | unseen Recall AUC | 0.5498 | 0.5715 | +0.02172 [0.00594, 0.03726] | 0.00487 |
 | 6 deg / 3 mm pose jitter / Pointwise | score-map correlation | 0.2724 | 0.5028 | +0.23041 [0.20586, 0.25351] | 1.55e-11 |
-| Visited-view 70% depth gap / Pose-Novelty | missing-patch Recall@5 after one action | 0.2827 | 0.5066 | +0.22389 [0.13979, 0.31363] | 7.15e-6 |
+| Joint 6 deg / 3 mm pose error + transient 70% depth gap / Pose-Novelty | missing-patch Recall@5 after one action | 0.3121 | 0.4778 | +0.16571 [0.09132, 0.24863] | 4.58e-5 |
 
-The visited-view test is the supported Pose-versus-Ray special case. A shared
-prefix pose is recorded as visited, but a contiguous 70% depth block is lost
-before fusion; the next three action branches are fault-free and shared. The
-episode-mean relative recovery improvement is 79.2%; the point-weighted values
-are 0.2763 for Pose and 0.5775 for Ray. Overall one-action F-gain improves by
-only 0.00686 and is not significant, so this result supports local missing-
-geometry recovery, not universal overall reconstruction superiority.
+The updated visited-view test is the supported Pose-versus-Ray special case. A
+shared prefix pose is recorded as visited, but a contiguous 70% depth block is
+lost before fusion. Both the faulty prefix and each subsequent shared branch
+have exactly 6 deg / 3 mm pose error; the depth gap itself is transient, no
+method is prevented from revisiting, and action noise is disabled. Ray's
+episode-mean relative missing-region recovery improvement over Pose is 53.1%;
+the point-weighted values are 0.2851 for Pose and 0.5001 for Ray. Pose remains
+stronger on global one-action F gain (0.2142 versus 0.2010), correlation
+(0.8359 versus 0.5625), and regret (0.0041 versus 0.0173). Thus this result
+supports local missing-geometry recovery, not universal overall reconstruction
+or action-ranking superiority.
+
+All Table-1 planners were run in the same 64 joint-fault scenes. Missing-patch
+Recall@5 is 0.3121 for Pose-Novelty, 0.5303 for adapted ActNeRF, 0.7161 for
+adapted PB-NBV, and 0.4778 for Ray-GPIS. PB-NBV's high local recovery coexists
+with negative global score-gain correlation (-0.3909) and the largest global
+regret (0.0733), so local patch recovery and overall active-action quality are
+reported separately. Ray-versus-ActNeRF local recovery is inconclusive
+(-0.05249, 95% CI [-0.15507, 0.04789], Holm p=0.353); PB-NBV is significantly
+higher than Ray on this local metric.
+
+The earlier depth-only visited-gap diagnostic remains archived: Pose obtains
+0.2827 and Ray 0.5066 missing-patch Recall@5. It is no longer the row used in
+the rebuttal's joint-error table.
 
 The exhaustive five-variant rerun under the same depth-gap stress is negative
 for component claims: Novelty-only 0.5066, Uncertainty-only 0.5030, Pointwise
@@ -137,7 +154,7 @@ comparison, while the negative result remains archived.
 | Persistent stall/slip diagnostic, F-AUC | 120 | **0.6434** | 0.6358 | Archived and excluded from rebuttal; it favors Pose. |
 | Real six-second trajectory plus axis registration outage, selected F gain | 120 | **0.2991** | 0.2965 | Ray-Pose -0.00253, CI crosses zero; inconclusive. |
 | Existing palm-hole stress, target Recall AUC | 64 | **0.5798** | 0.5715 | Does not support Ray over Pose. |
-| Visited-view local depth gap, missing-patch Recall@5 | 64 | 0.2827 | **0.5066** | Ray +0.22389, corrected p=7.15e-6; supported local case. |
+| Joint pose/depth visited-view gap, missing-patch Recall@5 | 64 | 0.3121 | **0.4778** | Ray +0.16571, corrected p=4.58e-5; supported local case only. |
 
 Additional development diagnostics were non-discriminative and are not used
 as evidence: a single-view empirical replay made both planners select the same

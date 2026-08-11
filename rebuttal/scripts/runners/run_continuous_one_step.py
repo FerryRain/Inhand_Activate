@@ -2,8 +2,9 @@
 """Evaluate one planner decision over shared executable action branches.
 
 For each object/initial-pose scene the three executable action branches are
-rendered exactly once and shared by Pose-Novelty and Ray-GPIS. Planners score
-only the initial state and cannot switch actions during the trajectory.
+rendered exactly once and shared by every enabled planner. Planners score only
+the state after the optional shared prefix and cannot switch actions during the
+evaluated trajectory.
 """
 from __future__ import annotations
 
@@ -44,6 +45,16 @@ def _metrics(evaluator, points):
         "recall@5": float(item["recall@5"]),
         "f@5": float(item["f@5"]),
         "chamfer_mm": 1000.0 * float(item["chamfer_m"]),
+    }
+
+
+def _observation_fault_row(observation):
+    return {
+        "step": int(observation.step),
+        "pose_error_deg": float(observation.pose_error_deg),
+        "translation_error_mm": 1000.0 * float(observation.translation_error_m),
+        "visibility_ratio": float(observation.visibility_ratio),
+        "fault_tags": list(observation.fault_tags),
     }
 
 
@@ -208,6 +219,10 @@ def run_scene(cfg, manifest, object_name, pose_seed, overwrite=False):
             "recovery_recall@5": float(recovery_recall),
             "metric_curve": curve,
             "trajectory_metadata": dict(branch_env.last_trajectory_metadata),
+            "observation_faults": [
+                _observation_fault_row(observation)
+                for observation in observations
+            ],
             "acquired_frames": int(len(observations)),
             "accepted_frames": int(sum(bool(row["accepted"]) for row in decisions)),
             "rejected_frames": int(sum(not bool(row["accepted"]) for row in decisions)),
@@ -249,6 +264,10 @@ def run_scene(cfg, manifest, object_name, pose_seed, overwrite=False):
             "shared_prefix_frames": int(len(prefix_observations)),
             "shared_prefix_accepted_frames": int(prefix_accepted_frames),
             "shared_prefix_trajectory_metadata": prefix_metadata,
+            "shared_prefix_observation_faults": [
+                _observation_fault_row(observation)
+                for observation in prefix_observations
+            ],
             "boundary_tracking_recovered": boundary_tracking_recovered,
         },
     }
