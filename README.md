@@ -1,9 +1,23 @@
 # AURORA: Active Uncertainty-Driven Re-Orientation for In-Hand Reconstruction
 
 <p align="center">
+  <a href="https://ferryrain.github.io/"><strong>Feiyu Zhao</strong></a><sup>†</sup>,
+  <strong>Yuetong Li</strong><sup>†</sup>,
+  <strong>Chenxi Xiao</strong><sup>*</sup>
+</p>
+
+<p align="center">
+  <sup>†</sup> Equal contribution. &nbsp;&nbsp; <sup>*</sup> Corresponding author.
+</p>
+
+<p align="center">
+  <strong>Accepted to the Conference on Robot Learning (CoRL) 2026.</strong>
+</p>
+
+<p align="center">
   <a href="https://aurorahand.github.io/"><img src="https://img.shields.io/badge/Project-Page-4C8BF5" alt="Project page"></a>
+  <a href="https://arxiv.org/abs/2609.08493"><img src="https://img.shields.io/badge/arXiv-2609.08493-B31B1B" alt="arXiv"></a>
   <a href="https://huggingface.co/datasets/FerryZh/AURORA"><img src="https://img.shields.io/badge/Hugging%20Face-Dataset-FFD21E" alt="Hugging Face dataset"></a>
-  <a href="rebuttal/paper.pdf"><img src="https://img.shields.io/badge/Paper-PDF-B31B1B" alt="Paper PDF"></a>
 </p>
 
 <p align="center">
@@ -34,6 +48,7 @@ reconstruction uncertainty and view novelty. The full system combines:
 | Resource | Link | Contents |
 |---|---|---|
 | Project page | [aurorahand.github.io](https://aurorahand.github.io/) | Method overview, videos, interactive results, and quantitative evaluation |
+| Paper | [arXiv:2609.08493](https://arxiv.org/abs/2609.08493) | Official AURORA preprint |
 | Dataset | [FerryZh/AURORA](https://huggingface.co/datasets/FerryZh/AURORA) | Real demonstrations, tracking data, reconstructions, ground truth, and evaluation outputs |
 | Paper snapshot | [rebuttal/paper.pdf](rebuttal/paper.pdf) | PDF stored with this repository |
 | Reproduction guide | [rebuttal/README.md](rebuttal/README.md) | Full baseline, ablation, robustness, runtime, and downstream commands |
